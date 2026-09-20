@@ -1,160 +1,44 @@
-import type { Assumption, AuditEvent, Obligation, SourceDocument, Transaction } from './types'
+import type { AuditEvent, BusinessProfile, DemoIdentity, GuidanceAction, RegulatoryUpdate, RulePosition, SourceDocument, Transaction } from './types'
 
-export const initialTransaction: Transaction = {
-  serviceType: 'Software implementation services',
-  invoiceNumber: 'INV-2026-041',
-  invoiceDate: '2026-09-18',
-  amount: '8,400',
-  currency: 'USD',
-  clientCountry: 'United States',
-  paymentStatus: 'payment-received',
-  paymentDate: '2026-09-19',
-}
-
-export const initialAssumptions: Assumption[] = [
-  {
-    id: 'a1',
-    statement: 'The service was delivered remotely from Ethiopia.',
-    confirmed: true,
-    impact: 'Used to evaluate whether the transaction is treated as an exported service.',
-  },
-  {
-    id: 'a2',
-    statement: 'The client has no permanent establishment in Ethiopia.',
-    confirmed: true,
-    impact: 'Changes how local-source income and withholding questions are framed.',
-  },
-  {
-    id: 'a3',
-    statement: 'Payment entered through a licensed Ethiopian bank.',
-    confirmed: false,
-    impact: 'Bank-channel evidence affects foreign-exchange documentation guidance.',
-  },
+export const demoIdentities: DemoIdentity[] = [
+  { role: 'owner', name: 'Demo Business Owner', title: 'Business owner', organization: 'Example Export Services PLC (Synthetic)', plan: 'Team', description: 'Synthetic demo identity · Verify rules, manage cases, alerts, team access, and advisers.' },
+  { role: 'finance', name: 'Demo Finance Lead', title: 'Finance lead', organization: 'Example Export Services PLC (Synthetic)', plan: 'Team', description: 'Synthetic demo identity · Record transactions, complete actions, manage deadlines, and prepare evidence.' },
+  { role: 'reviewer', name: 'Demo Policy Reviewer', title: 'Policy reviewer', organization: 'Example Independent Adviser (Synthetic)', plan: 'Professional', description: 'Synthetic demo identity · Resolve assigned conflicts and high-impact interpretations.' },
+  { role: 'curator', name: 'Demo Source Curator', title: 'Source curator', organization: 'Wayfinder Demo Operations', plan: 'Institutional', description: 'Synthetic demo identity · Ingest official sources and map amendments and supersession.' },
+  { role: 'admin', name: 'Demo Platform Administrator', title: 'Platform administrator', organization: 'Wayfinder Demo', plan: 'Institutional', description: 'Synthetic demo identity · Manage organizations, roles, plans, entitlements, and governance.' },
 ]
+
+export const initialProfile: BusinessProfile = { organization: 'Example Export Services PLC (Synthetic)', entityType: 'Private limited company', activity: 'Software project services', exporterType: 'Service exporter', taxStatus: 'VAT registered', bankChannel: true }
+export const initialTransaction: Transaction = { serviceType: 'Example software implementation services', invoiceNumber: 'DEMO-INV-001', invoiceDate: '2026-09-18', amount: '1,000', currency: 'USD', clientCountry: 'Example foreign market', paymentStatus: 'payment-received', paymentDate: '2026-09-19' }
 
 export const sources: SourceDocument[] = [
-  {
-    id: 'src-01',
-    authority: 'Ethiopian Revenue Authority',
-    title: 'Illustrative VAT guidance for exported services',
-    documentType: 'Demo guidance note',
-    jurisdiction: 'Ethiopia',
-    published: '2025-12-15',
-    effective: '2026-01-01',
-    retrieved: '2026-09-20 10:20 UTC',
-    version: 'sha256: demo-a91f',
-    status: 'current',
-    passage:
-      'For demonstration only: exported services may require evidence that the recipient is outside Ethiopia and that the benefit of the service is enjoyed outside Ethiopia.',
-    pinpoint: 'Section 4.2, paragraph 3',
-    url: '#demo-source-1',
-  },
-  {
-    id: 'src-02',
-    authority: 'National Bank of Ethiopia',
-    title: 'Illustrative foreign-currency receipt documentation directive',
-    documentType: 'Demo directive extract',
-    jurisdiction: 'Ethiopia',
-    published: '2026-02-04',
-    effective: '2026-03-01',
-    retrieved: '2026-09-20 10:22 UTC',
-    version: 'sha256: demo-7d4c',
-    status: 'current',
-    passage:
-      'For demonstration only: exporters should retain the contract, invoice, bank advice, and evidence of service delivery for foreign-currency receipts.',
-    pinpoint: 'Article 8(2)',
-    url: '#demo-source-2',
-  },
-  {
-    id: 'src-03',
-    authority: 'Ministry of Revenue',
-    title: 'Illustrative record-retention notice',
-    documentType: 'Demo public notice',
-    jurisdiction: 'Ethiopia',
-    published: '2024-08-12',
-    effective: '2024-09-01',
-    retrieved: '2026-09-20 10:24 UTC',
-    version: 'sha256: demo-c28b',
-    status: 'conflict',
-    passage:
-      'For demonstration only: supporting export documentation should be retained for the period required under the applicable tax record rules.',
-    pinpoint: 'Notice 3, item 6',
-    url: '#demo-source-3',
-  },
-  {
-    id: 'src-04',
-    authority: 'National Bank of Ethiopia',
-    title: 'Illustrative amendment on export proceeds',
-    documentType: 'Demo amendment',
-    jurisdiction: 'Ethiopia',
-    published: '2026-09-15',
-    effective: '2026-10-01',
-    retrieved: '2026-09-20 10:25 UTC',
-    version: 'sha256: demo-f511',
-    status: 'current',
-    passage:
-      'For demonstration only: the amendment changes the timing for one export-proceeds reporting step beginning 1 October 2026.',
-    pinpoint: 'Amendment 2, clause 5',
-    url: '#demo-source-4',
-  },
+  { id: 'nbe-2024-faq', authority: 'National Bank of Ethiopia', title: 'Foreign Exchange Directive No. FXD/01/2024 — FAQ', documentType: 'Official directive explainer', jurisdiction: 'Ethiopia', published: '2024-07-29', effective: '2024-07-29', retrieved: '2026-09-20 13:10 UTC', version: 'wayfinder:nbe-fxd-01-2024-faq', language: 'English', status: 'superseded', passage: 'The FAQ states that 50% of export proceeds enters the retention account and 50% is converted to birr.', pinpoint: 'FAQ · Export proceeds retention', url: 'https://nbe.gov.et/fx/', relationship: 'Superseded for service exporters by FXD/04/2026 and the 11 February 2026 public notice.' },
+  { id: 'nbe-2026-notice', authority: 'National Bank of Ethiopia', title: 'Notice on Relaxation of Foreign Exchange Directives', documentType: 'Official public notice', jurisdiction: 'Ethiopia', published: '2026-02-11', effective: '2026-02-11', retrieved: '2026-09-20 13:12 UTC', version: 'wayfinder:nbe-fxd-04-2026-notice', language: 'English', status: 'verified', passage: 'Service exporters may hold 100% of export proceeds in a foreign-exchange retention account for an indefinite period.', pinpoint: 'Public notice · Item 1', url: 'https://nbe.gov.et/nbe_news/public-notice-notice-on-relaxation-of-foreign-exchange-directives-fxd-01-2024/', relationship: 'Amends the position shown in the 2024 FAQ for service exporters.' },
+  { id: 'nbe-2026-directive-index', authority: 'National Bank of Ethiopia', title: 'Foreign Exchange Management Directives', documentType: 'Official directive index', jurisdiction: 'Ethiopia', published: '2026-05-25', effective: '2026-05-25', retrieved: '2026-09-20 13:14 UTC', version: 'wayfinder:nbe-directive-index-2026-09-20', language: 'English', status: 'verified', passage: 'The official index lists FXD/01/2024 and subsequent amendments, including FXD/04/2026 and FXD/05/2026.', pinpoint: 'Foreign Exchange Management · 2024–2026', url: 'https://nbe.gov.et/directives/foreign-exchange-management/', relationship: 'Authoritative version trail used to check whether guidance has been amended.' },
+  { id: 'moj-income-tax', authority: 'Federal Ministry of Justice', title: 'Federal Income Tax Proclamation', documentType: 'Official proclamation record', jurisdiction: 'Ethiopia', published: '2016-01-01', effective: '2016-01-01', retrieved: '2026-09-20 13:16 UTC', version: 'wayfinder:income-tax-proclamation-record', language: 'English', status: 'review', passage: 'The proclamation provides the federal income-tax framework; transaction-specific filing treatment requires further evidence and professional confirmation.', pinpoint: 'Official law record', url: 'https://justice.gov.et/en/law/federal-income-tax-proclamation/', relationship: 'Used only to frame unresolved tax questions in this proof of concept.' },
 ]
 
-export const obligations: Obligation[] = [
-  {
-    id: 'ob-1',
-    title: 'Preserve the transaction evidence pack',
-    description: 'Keep the signed agreement, issued invoice, bank credit advice, and evidence that the service was delivered.',
-    owner: 'Finance lead',
-    timing: 'Now · before monthly close',
-    status: 'verified',
-    sourceIds: ['src-02'],
-    rationale: 'The available demo source explicitly lists the evidence categories associated with a foreign-currency receipt.',
-  },
-  {
-    id: 'ob-2',
-    title: 'Confirm export-of-service treatment',
-    description: 'Document where the customer received and benefited from the service before applying the export treatment.',
-    owner: 'Finance lead + accountant',
-    timing: 'Before tax-file preparation',
-    status: 'interpretation',
-    sourceIds: ['src-01'],
-    rationale: 'Applicability depends on transaction facts. This output is an interpretation based on the confirmed assumptions.',
-  },
-  {
-    id: 'ob-3',
-    title: 'Verify the bank-channel record',
-    description: 'Attach the licensed-bank receipt or clarify how the foreign payment entered Ethiopia.',
-    owner: 'Operations lead',
-    timing: 'Missing input · resolve now',
-    status: 'review',
-    sourceIds: ['src-02'],
-    rationale: 'The bank-channel assumption remains unconfirmed, so the related documentation guidance cannot be finalized.',
-  },
-  {
-    id: 'ob-4',
-    title: 'Resolve the record-retention period',
-    description: 'Hold the final retention recommendation until the older notice is reconciled with the current tax record rule.',
-    owner: 'Policy reviewer',
-    timing: 'Review requested',
-    status: 'review',
-    sourceIds: ['src-03'],
-    rationale: 'The source refers to another applicable rule without stating the period. Professional interpretation is required.',
-  },
+export const previousRule: RulePosition = { label: 'Previous published position', statement: '50% of export proceeds was shown as retained in foreign currency and 50% converted to birr.', effective: '29 Jul 2024', audience: 'Exporters generally in the published FAQ', sourceId: 'nbe-2024-faq', status: 'superseded' }
+export const currentRule: RulePosition = { label: 'Current identified position', statement: 'A service exporter may retain 100% of export proceeds in a foreign-exchange retention account for an indefinite period.', effective: '11 Feb 2026', audience: 'Service exporters', sourceId: 'nbe-2026-notice', status: 'verified' }
+
+export const updates: RegulatoryUpdate[] = [
+  { id: 'up-1', title: 'Service-export retention position changed', summary: 'A newer NBE notice allows qualifying service exporters to retain 100% of export proceeds.', authority: 'National Bank of Ethiopia', effective: '2026-02-11', audience: 'Service exporters', status: 'verified', sourceId: 'nbe-2026-notice' },
+  { id: 'up-2', title: 'Foreign-exchange directive trail updated', summary: 'The NBE directive index shows multiple amendments following FXD/01/2024.', authority: 'National Bank of Ethiopia', effective: '2026-05-25', audience: 'Importers, exporters, banks, and FX account holders', status: 'verified', sourceId: 'nbe-2026-directive-index' },
+  { id: 'up-3', title: 'Tax treatment requires professional confirmation', summary: 'The demo can establish the FX position, but filing treatment remains a high-impact interpretation pending review.', authority: 'Federal Ministry of Justice', effective: '2016-01-01', audience: 'Businesses receiving foreign income', status: 'review', sourceId: 'moj-income-tax' },
 ]
+
+export function buildActions(profile: BusinessProfile, transaction: Transaction, reviewResolved: boolean): GuidanceAction[] {
+  const received = transaction.paymentStatus === 'payment-received'
+  const recurring = profile.activity === 'Recurring outsourcing services'
+  return [
+    { id: 'act-1', title: received ? 'Match the bank credit to this invoice' : 'Prepare the invoice evidence pack before payment', description: received ? 'Attach the bank credit advice and confirm the payer, amount, currency, and invoice reference.' : 'Keep the signed agreement, invoice, delivery evidence, and payment instructions together.', owner: 'Finance lead', deadline: received ? 'Today' : 'Before sending the invoice', category: 'Immediate', status: profile.bankChannel ? 'verified' : 'review', sourceIds: ['nbe-2026-notice'], rationale: 'The current FX position depends on the receipt being identifiable as service-export proceeds.', requiredDocuments: ['Client contract', 'Invoice', received ? 'Bank credit advice' : 'Payment instructions', 'Evidence of service delivery'] },
+    { id: 'act-2', title: 'Confirm the receipt is classified as service-export proceeds', description: `Document that ${transaction.serviceType.toLowerCase()} was supplied to the foreign client and connect the transaction to the service-export retention position.`, owner: 'Business owner + finance lead', deadline: 'Before monthly close', category: 'Before filing', status: 'interpretation', sourceIds: ['nbe-2026-notice', 'nbe-2026-directive-index'], rationale: 'The newer 100% position expressly identifies service exporters; applicability depends on the transaction facts.', requiredDocuments: ['Scope of work', 'Client location evidence', recurring ? 'Recurring service schedule' : 'Project acceptance or delivery evidence'] },
+    { id: 'act-3', title: 'Preserve the current-rule evidence with the transaction file', description: 'Save the current notice and the superseded FAQ reference so a future reviewer can reconstruct why this position was used.', owner: 'Finance lead', deadline: 'Before tax-file preparation', category: 'Before filing', status: 'verified', sourceIds: ['nbe-2024-faq', 'nbe-2026-notice'], rationale: 'The audit trail should explain both the current conclusion and the authentic older guidance that may cause confusion.', requiredDocuments: ['Current NBE notice', 'Previous FAQ snapshot', 'Wayfinder rule comparison'] },
+    { id: 'act-4', title: reviewResolved ? 'Apply the reviewed tax-file treatment' : 'Confirm tax filing treatment with a qualified professional', description: reviewResolved ? 'The reviewer resolution is attached to this guidance snapshot. Apply it only within the recorded scope.' : 'Send the prepared question package with the transaction facts and cited source material.', owner: reviewResolved ? 'Finance lead' : 'Policy or tax professional', deadline: 'Before filing the relevant return', category: 'Professional review', status: reviewResolved ? 'verified' : 'review', sourceIds: ['moj-income-tax'], rationale: 'The available source pack is sufficient for the FX change but not for a definitive transaction-specific tax conclusion.', requiredDocuments: ['Transaction summary', 'Business tax profile', 'Income-tax proclamation reference', 'Professional response'] },
+  ]
+}
 
 export const initialAuditEvents: AuditEvent[] = [
-  {
-    id: 'ev-1',
-    time: '10:20',
-    title: 'Demo corpus synchronized',
-    detail: 'Four synthetic source records loaded with provenance and version fingerprints.',
-    kind: 'evidence',
-  },
-  {
-    id: 'ev-2',
-    time: '10:25',
-    title: 'Source change detected',
-    detail: 'A future-effective amendment was linked to the export-proceeds guidance.',
-    kind: 'system',
-  },
+  { id: 'ev-1', time: '13:10', title: 'Official source corpus checked', detail: 'Four official-source records loaded with provenance and version metadata.', kind: 'evidence' },
+  { id: 'ev-2', time: '13:14', title: 'Supersession relationship detected', detail: 'The 2026 service-export notice was linked to the older 2024 FAQ position.', kind: 'system' },
 ]

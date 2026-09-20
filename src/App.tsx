@@ -1,568 +1,167 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
-  AlertTriangle,
-  ArrowLeft,
-  ArrowRight,
-  BookOpen,
-  Check,
-  CheckCircle2,
-  ChevronRight,
-  CircleHelp,
-  Clock3,
-  FileCheck2,
-  FileText,
-  History,
-  LayoutDashboard,
-  Menu,
-  RefreshCcw,
-  Scale,
-  ShieldCheck,
-  Sparkles,
-  UserRoundCheck,
-  X,
+  AlertTriangle, ArrowRight, Bell, BookOpen, Building2, Check, CheckCircle2, ChevronRight,
+  ClipboardList, FileCheck2, FileText, History, LayoutDashboard, LockKeyhole,
+  LogIn, Menu, MonitorCheck, RefreshCcw, Scale, Search, Settings2, ShieldCheck,
+  Upload, UserRoundCheck, X,
 } from 'lucide-react'
-import { initialAssumptions, initialAuditEvents, initialTransaction, obligations, sources } from './data'
-import type { Assumption, AuditEvent, JourneyStep, Obligation, SourceDocument, Status, Transaction, View } from './types'
+import { buildActions, currentRule, demoIdentities, initialAuditEvents, initialProfile, initialTransaction, previousRule, sources, updates } from './data'
+import type { AuditEvent, BusinessProfile, DemoIdentity, GuidanceAction, Role, SourceDocument, Status, Transaction, View } from './types'
 
-const navItems: Array<{ id: View; label: string; icon: typeof LayoutDashboard; count?: number }> = [
-  { id: 'guidance', label: 'Guidance', icon: LayoutDashboard },
-  { id: 'sources', label: 'Source library', icon: BookOpen, count: sources.length },
-  { id: 'review', label: 'Review queue', icon: UserRoundCheck, count: 2 },
-  { id: 'history', label: 'Audit history', icon: History },
-]
-
-const statusMeta: Record<Status, { label: string; className: string }> = {
-  verified: { label: 'Verified from source', className: 'status--verified' },
-  interpretation: { label: 'Interpretation', className: 'status--interpretation' },
-  review: { label: 'Review required', className: 'status--review' },
-  stale: { label: 'Source may be outdated', className: 'status--stale' },
+const statusLabels: Record<Status, string> = {
+  verified: 'Verified from source', interpretation: 'Interpretation', review: 'Professional review required', stale: 'Source may be outdated', superseded: 'Superseded', upcoming: 'Upcoming',
 }
 
+const roleLabels: Record<Role, string> = { public: 'Public', owner: 'Business owner', finance: 'Finance lead', reviewer: 'Policy reviewer', curator: 'Source curator', admin: 'Platform administrator' }
+
 function StatusBadge({ status }: { status: Status }) {
-  const meta = statusMeta[status]
-  return (
-    <span className={`status-badge ${meta.className}`}>
-      {status === 'verified' ? <CheckCircle2 aria-hidden="true" /> : <AlertTriangle aria-hidden="true" />}
-      {meta.label}
-    </span>
-  )
+  return <span className={`status-badge status--${status}`}>{status === 'verified' ? <CheckCircle2 aria-hidden="true" /> : <AlertTriangle aria-hidden="true" />}{statusLabels[status]}</span>
 }
 
 function Brand() {
-  return (
-    <div className="brand" aria-label="Wayfinder home">
-      <span className="brand__mark"><Scale aria-hidden="true" /></span>
-      <span>
-        <strong>Wayfinder</strong>
-        <small>Regulatory action navigator</small>
-      </span>
-    </div>
-  )
+  return <div className="brand"><span className="brand__mark"><Scale aria-hidden="true" /></span><span><strong>Wayfinder</strong><small>Regulatory intelligence & action</small></span></div>
 }
 
-function App() {
-  const [view, setView] = useState<View>('guidance')
-  const [step, setStep] = useState<JourneyStep>('intake')
+export default function App() {
+  const [identity, setIdentity] = useState<DemoIdentity | null>(null)
+  const [view, setView] = useState<View>('public')
+  const [profile, setProfile] = useState<BusinessProfile>(initialProfile)
   const [transaction, setTransaction] = useState<Transaction>(initialTransaction)
-  const [assumptions, setAssumptions] = useState<Assumption[]>(initialAssumptions)
+  const [verified, setVerified] = useState(false)
+  const [checking, setChecking] = useState(false)
   const [selectedSource, setSelectedSource] = useState<SourceDocument | null>(null)
-  const [completed, setCompleted] = useState<string[]>(['ob-1'])
+  const [reviewResolved, setReviewResolved] = useState(false)
+  const [completed, setCompleted] = useState<string[]>([])
   const [events, setEvents] = useState<AuditEvent[]>(initialAuditEvents)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [announcement, setAnnouncement] = useState('')
 
-  const confirmedCount = assumptions.filter((item) => item.confirmed).length
-  const completion = Math.round((completed.length / obligations.length) * 100)
-
-  function navigate(next: View) {
-    setView(next)
-    setMenuOpen(false)
-  }
-
+  const actions = useMemo(() => buildActions(profile, transaction, reviewResolved), [profile, transaction, reviewResolved])
   function record(title: string, detail: string, kind: AuditEvent['kind']) {
-    setEvents((current) => [
-      ...current,
-      {
-        id: `ev-${current.length + 1}`,
-        time: new Intl.DateTimeFormat('en', { hour: '2-digit', minute: '2-digit' }).format(new Date()),
-        title,
-        detail,
-        kind,
-      },
-    ])
+    setEvents(current => [...current, { id: `ev-${current.length + 1}`, time: new Intl.DateTimeFormat('en', { hour: '2-digit', minute: '2-digit' }).format(new Date()), title, detail, kind }])
   }
 
-  function finishIntake() {
-    record('Transaction details recorded', `${transaction.invoiceNumber} · ${transaction.currency} ${transaction.amount}`, 'input')
-    setStep('assumptions')
+  function navigate(next: View) { setView(next); setMenuOpen(false); window.scrollTo({ top: 0, behavior: 'smooth' }) }
+
+  function enterDemo(nextIdentity: DemoIdentity) {
+    setIdentity(nextIdentity)
+    const start: View = nextIdentity.role === 'reviewer' ? 'review' : nextIdentity.role === 'curator' ? 'curator' : nextIdentity.role === 'admin' ? 'admin' : 'overview'
+    setView(start)
+    record('Demo identity selected', `${nextIdentity.name} entered as ${roleLabels[nextIdentity.role]}.`, 'access')
+    setAnnouncement(`Signed in as ${nextIdentity.title}`)
   }
 
-  function generateGuidance() {
-    record('Guidance snapshot generated', `${confirmedCount} of ${assumptions.length} material assumptions confirmed.`, 'system')
-    setStep('results')
+  function signOut() { setIdentity(null); setView('public'); setVerified(false); setAnnouncement('Returned to public access') }
+
+  function runVerification() {
+    setChecking(true); setAnnouncement('Checking the official source corpus')
+    window.setTimeout(() => {
+      setChecking(false); setVerified(true)
+      record('Current rule verified', `Service-export position checked for ${transaction.invoiceNumber}.`, 'system')
+      setAnnouncement('Current rule verified. Personalized actions are ready.')
+    }, 450)
   }
 
-  function toggleComplete(id: string, title: string) {
-    setCompleted((current) => {
-      const exists = current.includes(id)
-      record(exists ? 'Action reopened' : 'Action completed', title, 'input')
-      return exists ? current.filter((item) => item !== id) : [...current, id]
-    })
+  function resolveReview() {
+    setReviewResolved(true)
+    record('Professional resolution recorded', 'Reviewer confirmed the limited tax-file escalation note for this guidance snapshot.', 'review')
+    setAnnouncement('Professional resolution recorded and the business action plan was updated')
   }
+
+  function toggleAction(id: string) { setCompleted(c => c.includes(id) ? c.filter(item => item !== id) : [...c, id]) }
 
   return (
-    <div className="app-shell">
+    <div className="app-root">
       <a className="skip-link" href="#main">Skip to main content</a>
-      <aside className={`sidebar ${menuOpen ? 'sidebar--open' : ''}`}>
-        <div className="sidebar__top">
-          <Brand />
-          <button className="icon-button sidebar__close" onClick={() => setMenuOpen(false)} aria-label="Close navigation">
-            <X aria-hidden="true" />
-          </button>
-        </div>
-        <nav aria-label="Primary navigation">
-          {navItems.map((item) => {
-            const Icon = item.icon
-            return (
-              <button
-                key={item.id}
-                className={`nav-item ${view === item.id ? 'nav-item--active' : ''}`}
-                onClick={() => navigate(item.id)}
-                aria-current={view === item.id ? 'page' : undefined}
-              >
-                <Icon aria-hidden="true" />
-                <span>{item.label}</span>
-                {item.count ? <span className="nav-count">{item.count}</span> : null}
-              </button>
-            )
-          })}
-        </nav>
-        <div className="sidebar__note">
-          <ShieldCheck aria-hidden="true" />
-          <div>
-            <strong>Demo environment</strong>
-            <p>Synthetic regulatory records. Not legal advice.</p>
-          </div>
-        </div>
-      </aside>
-
-      {menuOpen ? <button className="scrim" aria-label="Close navigation" onClick={() => setMenuOpen(false)} /> : null}
-
-      <div className="app-main">
-        <header className="topbar">
-          <button className="icon-button mobile-menu" onClick={() => setMenuOpen(true)} aria-label="Open navigation">
-            <Menu aria-hidden="true" />
-          </button>
-          <div className="topbar__context">
-            <span className="eyebrow">Demo workspace</span>
-            <strong>Selam Digital Solutions PLC</strong>
-          </div>
-          <div className="corpus-status">
-            <span className="live-dot" aria-hidden="true" />
-            Corpus checked 20 Sep 2026
-          </div>
-          <button className="avatar" aria-label="Account menu for Natnael">NT</button>
-        </header>
-
-        <main id="main" tabIndex={-1}>
-          {view === 'guidance' ? (
-            <GuidanceView
-              step={step}
-              setStep={setStep}
-              transaction={transaction}
-              setTransaction={setTransaction}
-              assumptions={assumptions}
-              setAssumptions={setAssumptions}
-              finishIntake={finishIntake}
-              generateGuidance={generateGuidance}
-              confirmedCount={confirmedCount}
-              completed={completed}
-              completion={completion}
-              toggleComplete={toggleComplete}
-              openSource={setSelectedSource}
-              openReview={() => navigate('review')}
-            />
-          ) : null}
-          {view === 'sources' ? <SourcesView openSource={setSelectedSource} /> : null}
-          {view === 'review' ? <ReviewView openSource={setSelectedSource} record={record} /> : null}
-          {view === 'history' ? <HistoryView events={events} /> : null}
-        </main>
-      </div>
-
-      {selectedSource ? <SourceDrawer source={selectedSource} onClose={() => setSelectedSource(null)} /> : null}
+      <div className="sr-only" aria-live="polite">{announcement}</div>
+      {identity ? (
+        <WorkspaceShell identity={identity} view={view} navigate={navigate} menuOpen={menuOpen} setMenuOpen={setMenuOpen} signOut={signOut}>
+          {view === 'overview' && <BusinessOverview identity={identity} navigate={navigate} reviewResolved={reviewResolved} />}
+          {view === 'verify' && <VerifyView profile={profile} setProfile={setProfile} transaction={transaction} setTransaction={setTransaction} verified={verified} checking={checking} runVerification={runVerification} actions={actions} completed={completed} toggleAction={toggleAction} openSource={setSelectedSource} navigate={navigate} reviewResolved={reviewResolved} />}
+          {view === 'actions' && <ActionPlan actions={actions} completed={completed} toggleAction={toggleAction} openSource={setSelectedSource} navigate={navigate} transaction={transaction} profile={profile} />}
+          {view === 'sources' && <SourcesView openSource={setSelectedSource} />}
+          {view === 'updates' && <UpdatesView openSource={setSelectedSource} />}
+          {view === 'review' && <ReviewerView resolved={reviewResolved} resolve={resolveReview} openSource={setSelectedSource} />}
+          {view === 'curator' && <CuratorView record={record} announce={setAnnouncement} openSource={setSelectedSource} />}
+          {view === 'admin' && <AdminView announce={setAnnouncement} />}
+          {view === 'history' && <HistoryView events={events} />}
+        </WorkspaceShell>
+      ) : (
+        <PublicShell view={view} navigate={navigate}>
+          {view === 'public' && <PublicHome navigate={navigate} openSource={setSelectedSource} />}
+          {view === 'updates' && <UpdatesView openSource={setSelectedSource} />}
+          {view === 'sources' && <SourcesView openSource={setSelectedSource} />}
+          {view === 'login' && <LoginView enterDemo={enterDemo} navigate={navigate} />}
+        </PublicShell>
+      )}
+      {selectedSource && <SourceDrawer source={selectedSource} close={() => setSelectedSource(null)} />}
     </div>
   )
 }
 
-interface GuidanceProps {
-  step: JourneyStep
-  setStep: (step: JourneyStep) => void
-  transaction: Transaction
-  setTransaction: (transaction: Transaction) => void
-  assumptions: Assumption[]
-  setAssumptions: (assumptions: Assumption[]) => void
-  finishIntake: () => void
-  generateGuidance: () => void
-  confirmedCount: number
-  completed: string[]
-  completion: number
-  toggleComplete: (id: string, title: string) => void
-  openSource: (source: SourceDocument) => void
-  openReview: () => void
+function PublicShell({ view, navigate, children }: { view: View; navigate: (view: View) => void; children: React.ReactNode }) {
+  return <><header className="public-header"><button className="brand-button" onClick={() => navigate('public')}><Brand /></button><nav aria-label="Public navigation"><button className={view === 'updates' ? 'active' : ''} onClick={() => navigate('updates')}>Regulatory updates</button><button className={view === 'sources' ? 'active' : ''} onClick={() => navigate('sources')}>Official sources</button><button className="button button--primary" onClick={() => navigate('login')}><LogIn aria-hidden="true" /> Sign in</button></nav></header><main id="main" tabIndex={-1}>{children}</main><footer className="public-footer"><Brand /><p>Evidence-backed guidance for informed action. Wayfinder does not replace qualified legal or tax advice.</p></footer></>
 }
 
-function GuidanceView(props: GuidanceProps) {
-  return (
-    <div className="page">
-      <div className="page-heading">
-        <div>
-          <span className="eyebrow">Cross-border service income</span>
-          <h1>{props.step === 'results' ? `Action plan for ${props.transaction.invoiceNumber}` : 'Understand your next regulatory steps'}</h1>
-          <p>
-            {props.step === 'results'
-              ? 'A traceable plan based on the transaction facts, stated assumptions, and the current demo evidence corpus.'
-              : 'Start with the transaction. Wayfinder will surface the evidence, assumptions, obligations, and questions that need professional review.'}
-          </p>
-        </div>
-        {props.step === 'results' ? (
-          <button className="button button--secondary" onClick={() => props.setStep('intake')}>
-            <RefreshCcw aria-hidden="true" /> Edit transaction
-          </button>
-        ) : null}
-      </div>
-
-      <JourneyProgress current={props.step} />
-
-      {props.step === 'intake' ? (
-        <TransactionForm transaction={props.transaction} setTransaction={props.setTransaction} onContinue={props.finishIntake} />
-      ) : null}
-      {props.step === 'assumptions' ? (
-        <AssumptionsPanel
-          assumptions={props.assumptions}
-          setAssumptions={props.setAssumptions}
-          onBack={() => props.setStep('intake')}
-          onGenerate={props.generateGuidance}
-          confirmedCount={props.confirmedCount}
-        />
-      ) : null}
-      {props.step === 'results' ? (
-        <ResultsPanel
-          transaction={props.transaction}
-          assumptions={props.assumptions}
-          completed={props.completed}
-          completion={props.completion}
-          toggleComplete={props.toggleComplete}
-          openSource={props.openSource}
-          openReview={props.openReview}
-        />
-      ) : null}
-    </div>
-  )
+function PublicHome({ navigate, openSource }: { navigate: (view: View) => void; openSource: (source: SourceDocument) => void }) {
+  return <div className="public-page"><section className="hero"><div><span className="eyebrow">Information you can trust and act on</span><h1>Know which rule applies—not just what was published.</h1><p>Wayfinder helps Ethiopian businesses identify current regulatory requirements, understand what changed, and turn official evidence into practical next steps.</p><div className="hero-actions"><button className="button button--primary" onClick={() => navigate('login')}>Verify a rule with demo access <ArrowRight aria-hidden="true" /></button><button className="button button--secondary" onClick={() => navigate('updates')}>Browse public updates</button></div></div><div className="hero-proof"><span className="proof-kicker"><ShieldCheck aria-hidden="true" /> Traceable conclusion</span><h2>Service-export retention position</h2><StatusBadge status="verified" /><strong>100% retention identified</strong><p>Effective 11 February 2026 for service exporters, based on a newer official NBE notice.</p><button className="source-link" onClick={() => openSource(sources[1])}>Inspect official evidence <ChevronRight aria-hidden="true" /></button></div></section><section className="public-section"><div className="section-title"><div><span className="eyebrow">Why this matters</span><h2>Authentic information may still be outdated.</h2></div><p>Wayfinder reconstructs the version trail before it generates guidance.</p></div><div className="change-strip"><RuleMini label="Older published position" value="50% retained" status="superseded" /><ArrowRight aria-hidden="true" /><RuleMini label="Current service-export position" value="100% retained" status="verified" /></div></section><section className="public-section"><div className="section-title"><div><span className="eyebrow">Latest verified changes</span><h2>Public regulatory watch</h2></div><button className="text-button" onClick={() => navigate('updates')}>View all updates <ArrowRight aria-hidden="true" /></button></div><UpdateCards items={updates.slice(0, 2)} openSource={openSource} /></section></div>
 }
 
-function JourneyProgress({ current }: { current: JourneyStep }) {
-  const steps: Array<{ id: JourneyStep; label: string }> = [
-    { id: 'intake', label: 'Transaction' },
-    { id: 'assumptions', label: 'Assumptions' },
-    { id: 'results', label: 'Action plan' },
-  ]
-  const currentIndex = steps.findIndex((step) => step.id === current)
-  return (
-    <ol className="journey-progress" aria-label="Guidance progress">
-      {steps.map((step, index) => (
-        <li key={step.id} className={index <= currentIndex ? 'is-active' : ''} aria-current={step.id === current ? 'step' : undefined}>
-          <span>{index < currentIndex ? <Check aria-hidden="true" /> : index + 1}</span>
-          {step.label}
-        </li>
-      ))}
-    </ol>
-  )
+function RuleMini({ label, value, status }: { label: string; value: string; status: Status }) { return <div className="rule-mini"><span>{label}</span><strong>{value}</strong><StatusBadge status={status} /></div> }
+
+function LoginView({ enterDemo, navigate }: { enterDemo: (identity: DemoIdentity) => void; navigate: (view: View) => void }) {
+  return <div className="login-page"><section className="login-intro"><Brand /><span className="eyebrow">Hackathon proof of concept</span><h1>Enter the product from every trust boundary.</h1><p>Choose a demo identity to see how evidence, interpretation, action, and professional judgment move across Wayfinder.</p><button className="text-button" onClick={() => navigate('updates')}>Continue with public access <ArrowRight aria-hidden="true" /></button></section><section className="login-card"><div className="login-form"><h2>Sign in</h2><label className="field"><span>Email</span><input type="email" placeholder="you@organization.com" /></label><label className="field"><span>Password</span><input type="password" placeholder="••••••••" /></label><button className="button button--primary button--full" type="button" onClick={() => enterDemo(demoIdentities[0])}>Sign in to demo workspace</button></div><div className="divider"><span>Or choose a demo role</span></div><div className="identity-list">{demoIdentities.map(item => <button key={item.role} className="identity-card" onClick={() => enterDemo(item)}><span className="identity-icon">{item.role === 'reviewer' ? <UserRoundCheck /> : item.role === 'curator' ? <MonitorCheck /> : item.role === 'admin' ? <Settings2 /> : <Building2 />}</span><span><strong>{item.title}</strong><small>{item.description}</small></span><ChevronRight aria-hidden="true" /></button>)}</div></section></div>
 }
 
-function TransactionForm({ transaction, setTransaction, onContinue }: { transaction: Transaction; setTransaction: (value: Transaction) => void; onContinue: () => void }) {
-  function update<K extends keyof Transaction>(key: K, value: Transaction[K]) {
-    setTransaction({ ...transaction, [key]: value })
+function WorkspaceShell({ identity, view, navigate, menuOpen, setMenuOpen, signOut, children }: { identity: DemoIdentity; view: View; navigate: (view: View) => void; menuOpen: boolean; setMenuOpen: (value: boolean) => void; signOut: () => void; children: React.ReactNode }) {
+  const common = [{ id: 'overview' as View, label: 'Overview', icon: LayoutDashboard }, { id: 'verify' as View, label: 'Verify a rule', icon: Search }, { id: 'actions' as View, label: 'Action plans', icon: ClipboardList }, { id: 'updates' as View, label: 'Regulatory watch', icon: Bell }, { id: 'sources' as View, label: 'Official sources', icon: BookOpen }, { id: 'history' as View, label: 'Audit history', icon: History }]
+  const items = identity.role === 'reviewer' ? [{ id: 'review' as View, label: 'Review queue', icon: UserRoundCheck }, { id: 'sources' as View, label: 'Evidence library', icon: BookOpen }, { id: 'history' as View, label: 'Review audit', icon: History }] : identity.role === 'curator' ? [{ id: 'curator' as View, label: 'Source operations', icon: MonitorCheck }, { id: 'sources' as View, label: 'Source library', icon: BookOpen }, { id: 'history' as View, label: 'Ingestion audit', icon: History }] : identity.role === 'admin' ? [{ id: 'admin' as View, label: 'Platform overview', icon: Settings2 }, { id: 'sources' as View, label: 'Source authorities', icon: BookOpen }, { id: 'history' as View, label: 'System audit', icon: History }] : common
+  return <div className="app-shell"><aside className={`sidebar ${menuOpen ? 'sidebar--open' : ''}`}><div className="sidebar__top"><Brand /><button className="icon-button sidebar__close" onClick={() => setMenuOpen(false)} aria-label="Close navigation"><X /></button></div><nav aria-label="Workspace navigation">{items.map(item => { const Icon = item.icon; return <button key={item.id} className={`nav-item ${view === item.id ? 'nav-item--active' : ''}`} onClick={() => navigate(item.id)}><Icon /><span>{item.label}</span></button> })}</nav><div className="workspace-identity"><span>{identity.name.slice(0, 2).toUpperCase()}</span><div><strong>{identity.name}</strong><small>{identity.title} · {identity.plan}</small></div></div><button className="nav-item" onClick={signOut}><LogIn /><span>Switch demo role</span></button></aside>{menuOpen && <button className="scrim" aria-label="Close navigation" onClick={() => setMenuOpen(false)} />}<div className="app-main"><header className="topbar"><button className="icon-button mobile-menu" onClick={() => setMenuOpen(true)} aria-label="Open navigation"><Menu /></button><div className="topbar__context"><span className="eyebrow">{identity.plan} plan</span><strong>{identity.organization}</strong></div><div className="corpus-status"><span className="live-dot" /> Official corpus checked 20 Sep 2026</div><span className="role-chip">{identity.title}</span></header><main id="main" tabIndex={-1}>{children}</main></div></div>
+}
+
+function BusinessOverview({ identity, navigate, reviewResolved }: { identity: DemoIdentity; navigate: (view: View) => void; reviewResolved: boolean }) {
+  return <Page eyebrow="Business workspace" title={`Good afternoon, ${identity.name.split(' ')[0]}.`} description="Your regulatory profile connects official changes to the transactions and decisions they affect."><div className="overview-hero"><div><StatusBadge status="verified" /><h2>A newer rule may change how you handle service-export proceeds.</h2><p>The official source trail indicates that the older 50% retention position has been superseded for service exporters.</p><button className="button button--primary" onClick={() => navigate('verify')}>Verify against my transaction <ArrowRight /></button></div><div className="overview-stat"><span>Current identified position</span><strong>100%</strong><small>service-export proceeds may be retained</small></div></div><div className="dashboard-grid"><section className="workspace-card"><span className="eyebrow">Immediate attention</span><h2>1 professional question</h2><p>{reviewResolved ? 'The reviewer resolution has been recorded and the action plan updated.' : 'Transaction-specific tax filing treatment remains held for qualified review.'}</p><button className="text-button" onClick={() => navigate('actions')}>Open action plan <ArrowRight /></button></section><section className="workspace-card"><span className="eyebrow">Regulatory watch</span><h2>2 relevant changes</h2><p>Changes are matched to your service-export profile and saved transaction context.</p><button className="text-button" onClick={() => navigate('updates')}>Review changes <ArrowRight /></button></section><section className="workspace-card"><span className="eyebrow">Expansion preview</span><h2>Goods-export intelligence</h2><p>Customs, commodity rules, logistics, permits, FX, and tax form the next jurisdiction pack.</p><span className="plan-tag">Institutional roadmap</span></section></div></Page>
+}
+
+function VerifyView({ profile, setProfile, transaction, setTransaction, verified, checking, runVerification, actions, completed, toggleAction, openSource, navigate, reviewResolved }: { profile: BusinessProfile; setProfile: (value: BusinessProfile) => void; transaction: Transaction; setTransaction: (value: Transaction) => void; verified: boolean; checking: boolean; runVerification: () => void; actions: GuidanceAction[]; completed: string[]; toggleAction: (id: string) => void; openSource: (source: SourceDocument) => void; navigate: (view: View) => void; reviewResolved: boolean }) {
+  const updateProfile = <K extends keyof BusinessProfile>(key: K, value: BusinessProfile[K]) => setProfile({ ...profile, [key]: value })
+  const updateTransaction = <K extends keyof Transaction>(key: K, value: Transaction[K]) => setTransaction({ ...transaction, [key]: value })
+  return <Page eyebrow="Current-rule verification" title="Which rule applies to this transaction?" description="Wayfinder checks the transaction facts against the official source trail before it recommends an action.">{!verified ? <section className="workspace-card verify-form"><div className="form-section"><div><span className="step-number">1</span><h2>Business context</h2></div><div className="form-grid"><label className="field"><span>Export activity</span><select value={profile.activity} onChange={e => updateProfile('activity', e.target.value as BusinessProfile['activity'])}><option>Software project services</option><option>Recurring outsourcing services</option></select></label><label className="field"><span>Exporter type</span><select value={profile.exporterType} onChange={e => updateProfile('exporterType', e.target.value as BusinessProfile['exporterType'])}><option>Service exporter</option><option>Goods exporter</option></select></label><label className="field"><span>Tax status</span><select value={profile.taxStatus} onChange={e => updateProfile('taxStatus', e.target.value as BusinessProfile['taxStatus'])}><option>VAT registered</option><option>Not VAT registered</option><option>Unknown</option></select></label><label className="check-field"><input type="checkbox" checked={profile.bankChannel} onChange={e => updateProfile('bankChannel', e.target.checked)} /><span><strong>Payment uses a licensed Ethiopian bank</strong><small>This changes the evidence and escalation path.</small></span></label></div></div><div className="form-section"><div><span className="step-number">2</span><h2>Transaction</h2></div><div className="form-grid"><label className="field field--wide"><span>Service provided</span><input value={transaction.serviceType} onChange={e => updateTransaction('serviceType', e.target.value)} /></label><label className="field"><span>Invoice number</span><input value={transaction.invoiceNumber} onChange={e => updateTransaction('invoiceNumber', e.target.value)} /></label><label className="field"><span>Invoice date</span><input type="date" value={transaction.invoiceDate} onChange={e => updateTransaction('invoiceDate', e.target.value)} /></label><label className="field"><span>Amount</span><div className="compound-input"><select value={transaction.currency} onChange={e => updateTransaction('currency', e.target.value)}><option>USD</option><option>EUR</option><option>GBP</option></select><input value={transaction.amount} onChange={e => updateTransaction('amount', e.target.value)} /></div></label><label className="field"><span>Client country</span><input value={transaction.clientCountry} onChange={e => updateTransaction('clientCountry', e.target.value)} /></label><fieldset className="field field--wide radio-group"><legend>Transaction stage</legend><label><input type="radio" checked={transaction.paymentStatus === 'invoice-issued'} onChange={() => updateTransaction('paymentStatus', 'invoice-issued')} /> Invoice issued</label><label><input type="radio" checked={transaction.paymentStatus === 'payment-received'} onChange={() => updateTransaction('paymentStatus', 'payment-received')} /> Payment received</label></fieldset></div></div><div className="form-footer"><p><ShieldCheck /> Only facts that affect applicability are requested.</p><button className="button button--primary" onClick={runVerification} disabled={checking}>{checking ? <><RefreshCcw className="spin" /> Checking official sources…</> : <>Verify current rule <ArrowRight /></>}</button></div></section> : <GuidanceResults profile={profile} transaction={transaction} actions={actions} completed={completed} toggleAction={toggleAction} openSource={openSource} navigate={navigate} reviewResolved={reviewResolved} />}</Page>
+}
+
+function GuidanceResults({ profile, transaction, actions, completed, toggleAction, openSource, navigate, reviewResolved }: { profile: BusinessProfile; transaction: Transaction; actions: GuidanceAction[]; completed: string[]; toggleAction: (id: string) => void; openSource: (source: SourceDocument) => void; navigate: (view: View) => void; reviewResolved: boolean }) {
+  if (profile.exporterType === 'Goods exporter') {
+    return <section className="workspace-card scope-boundary"><StatusBadge status="review" /><span className="eyebrow">Secondary expansion path</span><h2>Goods-export applicability cannot be concluded from this source pack.</h2><p>The current proof of concept is deep for service exports. A goods-export answer also requires commodity rules, customs declarations, permits, logistics evidence, tax treatment, and the relevant foreign-exchange provisions.</p><div className="notice notice--info"><ShieldCheck /><div><strong>Safe product behavior</strong><p>Wayfinder stops instead of applying a service-export rule to a goods transaction. This case would be routed for the next jurisdiction pack and professional review.</p></div></div><button className="button button--primary" onClick={() => navigate('sources')}>Inspect available official sources <ArrowRight /></button></section>
   }
-  return (
-    <section className="workspace-card form-card" aria-labelledby="transaction-heading">
-      <div className="section-heading">
-        <div className="section-icon"><FileText aria-hidden="true" /></div>
-        <div>
-          <h2 id="transaction-heading">Describe the transaction</h2>
-          <p>Only fields that change the guidance are requested.</p>
-        </div>
-      </div>
-      <form onSubmit={(event) => { event.preventDefault(); onContinue() }}>
-        <div className="form-grid">
-          <label className="field field--wide">
-            <span>Service provided</span>
-            <input value={transaction.serviceType} onChange={(event) => update('serviceType', event.target.value)} required />
-            <small>Describe what the foreign client paid for.</small>
-          </label>
-          <label className="field">
-            <span>Invoice number</span>
-            <input value={transaction.invoiceNumber} onChange={(event) => update('invoiceNumber', event.target.value)} required />
-          </label>
-          <label className="field">
-            <span>Invoice date</span>
-            <input type="date" value={transaction.invoiceDate} onChange={(event) => update('invoiceDate', event.target.value)} required />
-          </label>
-          <label className="field">
-            <span>Amount</span>
-            <div className="compound-input">
-              <select aria-label="Currency" value={transaction.currency} onChange={(event) => update('currency', event.target.value)}>
-                <option>USD</option><option>EUR</option><option>GBP</option>
-              </select>
-              <input inputMode="decimal" value={transaction.amount} onChange={(event) => update('amount', event.target.value)} required />
-            </div>
-          </label>
-          <label className="field">
-            <span>Client country</span>
-            <input value={transaction.clientCountry} onChange={(event) => update('clientCountry', event.target.value)} required />
-          </label>
-          <fieldset className="field field--wide radio-group">
-            <legend>Transaction stage</legend>
-            <label><input type="radio" name="stage" checked={transaction.paymentStatus === 'invoice-issued'} onChange={() => update('paymentStatus', 'invoice-issued')} /> Invoice issued</label>
-            <label><input type="radio" name="stage" checked={transaction.paymentStatus === 'payment-received'} onChange={() => update('paymentStatus', 'payment-received')} /> Payment received</label>
-          </fieldset>
-          {transaction.paymentStatus === 'payment-received' ? (
-            <label className="field">
-              <span>Payment date</span>
-              <input type="date" value={transaction.paymentDate} onChange={(event) => update('paymentDate', event.target.value)} required />
-            </label>
-          ) : null}
-        </div>
-        <div className="form-footer">
-          <p><ShieldCheck aria-hidden="true" /> Demo data stays in this browser session.</p>
-          <button className="button button--primary" type="submit">Review assumptions <ArrowRight aria-hidden="true" /></button>
-        </div>
-      </form>
-    </section>
-  )
+  return <div className="guidance-results"><section className="current-rule"><div><span className="eyebrow">Current applicable position</span><StatusBadge status="verified" /><h2>100% of qualifying service-export proceeds may be retained.</h2><p>This conclusion applies because the profile identifies a service exporter and the transaction occurred after the newer NBE notice became effective.</p><div className="rule-meta"><span><strong>Effective:</strong> 11 Feb 2026</span><span><strong>Audience:</strong> Service exporters</span><span><strong>Last checked:</strong> 20 Sep 2026</span></div><div className="hero-actions"><button className="button button--secondary" onClick={() => openSource(sources[1])}><FileCheck2 /> View official evidence</button><button className="button button--secondary" onClick={() => window.print()}>Export guidance brief</button></div></div><div className="trust-panel"><span className="eyebrow">Trust assessment</span><TrustRow label="Source authority" value="Official regulator" /><TrustRow label="Currency" value="Current source identified" /><TrustRow label="Applicability" value="Profile matched" /><TrustRow label="Human review" value={reviewResolved ? 'Resolution recorded' : 'Tax question pending'} /></div></section><section className="comparison-section"><div className="section-title"><div><span className="eyebrow">Why older guidance conflicts</span><h2>Previous versus current</h2></div></div><div className="comparison-grid"><RulePositionCard rule={previousRule} openSource={openSource} /><RulePositionCard rule={currentRule} openSource={openSource} /></div><div className="notice notice--info"><RefreshCcw /><div><strong>Wayfinder’s interpretation</strong><p>The older FAQ appears authentic but is superseded for service exporters by the newer 2026 position. Goods exporters require a different applicability analysis.</p></div></div></section><section className="guidance-grid"><div><div className="section-title compact"><div><span className="eyebrow">Evidence-backed action plan</span><h2>What to do next</h2></div><button className="text-button" onClick={() => navigate('actions')}>Full action plan <ArrowRight /></button></div><div className="action-list">{actions.slice(0, 3).map(action => <ActionCard key={action.id} action={action} done={completed.includes(action.id)} toggle={() => toggleAction(action.id)} openSource={openSource} />)}</div></div><aside className="side-stack"><section className="workspace-card"><span className="eyebrow">Required documents</span><h2>Evidence pack</h2>{Array.from(new Set(actions.flatMap(a => a.requiredDocuments))).slice(0, 6).map(item => <p className="document-row" key={item}><FileText /> {item}</p>)}</section><ExpertPackage transaction={transaction} profile={profile} resolved={reviewResolved} /></aside></section></div>
 }
 
-function AssumptionsPanel({ assumptions, setAssumptions, onBack, onGenerate, confirmedCount }: { assumptions: Assumption[]; setAssumptions: (items: Assumption[]) => void; onBack: () => void; onGenerate: () => void; confirmedCount: number }) {
-  function toggle(id: string) {
-    setAssumptions(assumptions.map((item) => item.id === id ? { ...item, confirmed: !item.confirmed } : item))
-  }
-  return (
-    <section className="workspace-card" aria-labelledby="assumptions-heading">
-      <div className="section-heading">
-        <div className="section-icon"><CircleHelp aria-hidden="true" /></div>
-        <div>
-          <h2 id="assumptions-heading">Confirm material assumptions</h2>
-          <p>Unconfirmed facts remain visible and can place guidance on hold.</p>
-        </div>
-      </div>
-      <div className="assumption-list">
-        {assumptions.map((item) => (
-          <label key={item.id} className={`assumption ${item.confirmed ? 'assumption--confirmed' : ''}`}>
-            <input type="checkbox" checked={item.confirmed} onChange={() => toggle(item.id)} />
-            <span className="custom-check">{item.confirmed ? <Check aria-hidden="true" /> : null}</span>
-            <span>
-              <strong>{item.statement}</strong>
-              <small>{item.impact}</small>
-            </span>
-          </label>
-        ))}
-      </div>
-      <div className="notice notice--info">
-        <Sparkles aria-hidden="true" />
-        <div><strong>Interpretation boundary</strong><p>The resulting plan will distinguish source-backed facts from interpretation and hold high-impact uncertainty for professional review.</p></div>
-      </div>
-      <div className="form-footer">
-        <button className="button button--ghost" onClick={onBack}><ArrowLeft aria-hidden="true" /> Back</button>
-        <div className="footer-actions">
-          <span>{confirmedCount} of {assumptions.length} confirmed</span>
-          <button className="button button--primary" onClick={onGenerate}>Generate action plan <ArrowRight aria-hidden="true" /></button>
-        </div>
-      </div>
-    </section>
-  )
+function TrustRow({ label, value }: { label: string; value: string }) { return <div className="trust-row"><span>{label}</span><strong><CheckCircle2 /> {value}</strong></div> }
+function RulePositionCard({ rule, openSource }: { rule: typeof currentRule; openSource: (source: SourceDocument) => void }) { const source = sources.find(item => item.id === rule.sourceId)!; return <article className={`rule-position rule-position--${rule.status}`}><StatusBadge status={rule.status} /><span className="eyebrow">{rule.label}</span><h3>{rule.statement}</h3><dl><div><dt>Effective</dt><dd>{rule.effective}</dd></div><div><dt>Audience</dt><dd>{rule.audience}</dd></div></dl><button className="source-link" onClick={() => openSource(source)}><FileCheck2 /> {source.title}</button></article> }
+
+function ActionPlan({ actions, completed, toggleAction, openSource, navigate, transaction, profile }: { actions: GuidanceAction[]; completed: string[]; toggleAction: (id: string) => void; openSource: (source: SourceDocument) => void; navigate: (view: View) => void; transaction: Transaction; profile: BusinessProfile }) {
+  return <Page eyebrow="Saved guidance case" title={`Action plan for ${transaction.invoiceNumber}`} description={`${completed.length} of ${actions.length} actions complete. Evidence, deadlines, and unresolved professional questions remain attached to this snapshot.`}><div className="action-page-grid"><section className="workspace-card action-panel"><div className="panel-heading"><div><h2>Actions and deadlines</h2><p>Complete the safe operational steps while held interpretations remain visible.</p></div><button className="button button--secondary" onClick={() => window.print()}>Export brief</button></div><div className="action-list">{actions.map(action => <ActionCard key={action.id} action={action} done={completed.includes(action.id)} toggle={() => toggleAction(action.id)} openSource={openSource} />)}</div></section><aside className="side-stack"><ExpertPackage transaction={transaction} profile={profile} resolved={actions[3].status === 'verified'} /><button className="button button--primary button--full" onClick={() => navigate('verify')}>Recheck current rule</button></aside></div></Page>
 }
 
-function ResultsPanel({ transaction, assumptions, completed, completion, toggleComplete, openSource, openReview }: { transaction: Transaction; assumptions: Assumption[]; completed: string[]; completion: number; toggleComplete: (id: string, title: string) => void; openSource: (source: SourceDocument) => void; openReview: () => void }) {
-  const unconfirmed = assumptions.filter((item) => !item.confirmed)
-  return (
-    <div className="results-layout">
-      <section className="result-summary">
-        <div className="summary-main">
-          <span className="status-badge status--interpretation"><Sparkles aria-hidden="true" /> Interpretation based on stated assumptions</span>
-          <h2>{transaction.currency} {transaction.amount} received for {transaction.serviceType.toLowerCase()}</h2>
-          <p>Foreign client in {transaction.clientCountry} · payment recorded {formatDate(transaction.paymentDate)}</p>
-        </div>
-        <div className="summary-metric" aria-label={`${completion} percent of actions complete`}>
-          <strong>{completion}%</strong><span>actions complete</span>
-        </div>
-      </section>
+function ActionCard({ action, done, toggle, openSource }: { action: GuidanceAction; done: boolean; toggle: () => void; openSource: (source: SourceDocument) => void }) { return <article className={`action-item ${done ? 'action-item--complete' : ''}`}><button className="check-button" onClick={toggle} aria-label={`${done ? 'Reopen' : 'Complete'} ${action.title}`} aria-pressed={done}>{done && <Check />}</button><div><div className="action-item__top"><StatusBadge status={action.status} /><span>{action.category} · {action.deadline}</span></div><h3>{action.title}</h3><p>{action.description}</p><div className="action-owner"><strong>Owner:</strong> {action.owner}</div><details><summary>Why this action and what is required?</summary><p>{action.rationale}</p><ul>{action.requiredDocuments.map(item => <li key={item}>{item}</li>)}</ul></details><div className="citation-row">{action.sourceIds.map(id => { const source = sources.find(item => item.id === id)!; return <button key={id} className="source-link" onClick={() => openSource(source)}><FileCheck2 /> {source.authority}</button> })}</div></div></article> }
 
-      {unconfirmed.length ? (
-        <div className="notice notice--warning">
-          <AlertTriangle aria-hidden="true" />
-          <div><strong>One material fact is unconfirmed</strong><p>{unconfirmed[0].statement} Guidance affected by this fact remains on hold.</p></div>
-        </div>
-      ) : null}
+function ExpertPackage({ transaction, profile, resolved }: { transaction: Transaction; profile: BusinessProfile; resolved: boolean }) { const [copied, setCopied] = useState(false); const question = `For ${profile.organization}, does the applicable tax filing treatment for ${transaction.currency} ${transaction.amount} received for ${transaction.serviceType.toLowerCase()} require any additional declaration, evidence, or timing step beyond the attached FX documentation?`; return <section className={`workspace-card expert-package ${resolved ? 'resolved' : ''}`}><span className="eyebrow">Professional escalation</span><StatusBadge status={resolved ? 'verified' : 'review'} /><h2>{resolved ? 'Resolution attached' : 'Question package ready'}</h2><blockquote>{question}</blockquote><p>Includes transaction facts, business profile, identified FX rule, source passages, and unresolved scope.</p><button className="button button--secondary button--full" onClick={() => { navigator.clipboard?.writeText(question); setCopied(true) }}>{copied ? <><Check /> Copied</> : <>Copy question for adviser</>}</button></section> }
 
-      <div className="results-grid">
-        <section className="workspace-card action-panel" aria-labelledby="actions-heading">
-          <div className="panel-heading">
-            <div><span className="eyebrow">Recommended actions</span><h2 id="actions-heading">What to do next</h2></div>
-            <span className="item-count">{completed.length}/{obligations.length} complete</span>
-          </div>
-          <div className="action-list">
-            {obligations.map((item) => (
-              <ObligationCard key={item.id} item={item} isComplete={completed.includes(item.id)} onToggle={toggleComplete} openSource={openSource} />
-            ))}
-          </div>
-        </section>
+function UpdatesView({ openSource }: { openSource: (source: SourceDocument) => void }) { return <Page eyebrow="Public regulatory watch" title="Recent changes and unresolved questions" description="Every update shows who published it, when it applies, who it affects, and whether professional review remains necessary."><UpdateCards items={updates} openSource={openSource} /></Page> }
+function UpdateCards({ items, openSource }: { items: typeof updates; openSource: (source: SourceDocument) => void }) { return <div className="update-grid">{items.map(item => { const source = sources.find(source => source.id === item.sourceId)!; return <article className="update-card" key={item.id}><div><StatusBadge status={item.status} /><span className="update-date">Effective {formatDate(item.effective)}</span></div><h2>{item.title}</h2><p>{item.summary}</p><dl><div><dt>Authority</dt><dd>{item.authority}</dd></div><div><dt>Affected</dt><dd>{item.audience}</dd></div></dl><button className="source-link" onClick={() => openSource(source)}>Inspect source evidence <ChevronRight /></button></article> })}</div> }
 
-        <aside className="result-aside">
-          <section className="workspace-card compact-card">
-            <span className="eyebrow">Evidence coverage</span>
-            <h2>3 authorities · 4 records</h2>
-            <div className="coverage-bar"><span style={{ width: '75%' }} /></div>
-            <p>Three obligations have direct source context. One requires a policy professional to resolve an indirect reference.</p>
-            <button className="text-button" onClick={() => openSource(sources[0])}>Inspect source context <ChevronRight aria-hidden="true" /></button>
-          </section>
-          <section className="workspace-card compact-card conflict-card">
-            <div className="conflict-icon"><AlertTriangle aria-hidden="true" /></div>
-            <span className="eyebrow">Conflict detected</span>
-            <h2>Retention period is not explicit</h2>
-            <p>An older notice points to an applicable tax record rule without stating the period. The final recommendation is held.</p>
-            <button className="button button--warning" onClick={openReview}>Open review request <ArrowRight aria-hidden="true" /></button>
-          </section>
-          <section className="workspace-card compact-card change-card">
-            <div className="change-header"><Clock3 aria-hidden="true" /><span>Effective 1 Oct 2026</span></div>
-            <h2>Upcoming source change</h2>
-            <p>A demo amendment changes one reporting step after this transaction date.</p>
-            <button className="text-button" onClick={() => openSource(sources[3])}>Compare the amendment <ChevronRight aria-hidden="true" /></button>
-          </section>
-        </aside>
-      </div>
-      <p className="disclaimer">This demonstration uses synthetic regulatory records and does not provide legal or tax advice.</p>
-    </div>
-  )
-}
+function SourcesView({ openSource }: { openSource: (source: SourceDocument) => void }) { return <Page eyebrow="Public evidence library" title="Official sources and version relationships" description="Wayfinder keeps the original source visible even when a newer publication changes the applicable position."><div className="metric-row"><Metric label="Official records" value="4" note="Bounded proof-of-concept corpus" /><Metric label="Authorities" value="2" note="NBE and Ministry of Justice" /><Metric label="Version relationship" value="1" note="Supersession mapped" /></div><section className="workspace-card source-table-card"><div className="source-list">{sources.map(source => <button className="source-row" key={source.id} onClick={() => openSource(source)}><span className="source-row__icon"><FileText /></span><span className="source-row__main"><strong>{source.title}</strong><small>{source.authority} · {source.documentType}</small></span><StatusBadge status={source.status} /><span className="source-row__date">Effective {formatDate(source.effective)}</span><ChevronRight /></button>)}</div></section></Page> }
 
-function ObligationCard({ item, isComplete, onToggle, openSource }: { item: Obligation; isComplete: boolean; onToggle: (id: string, title: string) => void; openSource: (source: SourceDocument) => void }) {
-  const source = sources.find((candidate) => candidate.id === item.sourceIds[0])!
-  return (
-    <article className={`action-item ${isComplete ? 'action-item--complete' : ''}`}>
-      <button className="check-button" onClick={() => onToggle(item.id, item.title)} aria-label={`${isComplete ? 'Reopen' : 'Complete'} ${item.title}`} aria-pressed={isComplete}>
-        {isComplete ? <Check aria-hidden="true" /> : null}
-      </button>
-      <div className="action-item__content">
-        <div className="action-item__top"><StatusBadge status={item.status} /><span>{item.timing}</span></div>
-        <h3>{item.title}</h3>
-        <p>{item.description}</p>
-        <div className="action-meta"><span><strong>Owner:</strong> {item.owner}</span></div>
-        <details>
-          <summary>Why this action?</summary>
-          <p>{item.rationale}</p>
-        </details>
-        <button className="source-link" onClick={() => openSource(source)}><FileCheck2 aria-hidden="true" /> {source.authority} · {source.pinpoint}</button>
-      </div>
-    </article>
-  )
-}
+function ReviewerView({ resolved, resolve, openSource }: { resolved: boolean; resolve: () => void; openSource: (source: SourceDocument) => void }) { return <Page eyebrow="Policy and legal review" title="High-impact interpretation queue" description="Only conflicts, incomplete evidence, and material interpretations stop for professional judgment."><section className="workspace-card review-card"><div className="review-header"><div><StatusBadge status={resolved ? 'verified' : 'review'} /><h2>Confirm the boundary of the tax-file recommendation</h2><p>Example Export Services PLC (Synthetic) · DEMO-INV-001 · High impact</p></div><span className="priority">Priority 1</span></div><div className="review-question"><span className="eyebrow">Exact question</span><blockquote>Does this transaction require any additional tax declaration, evidence, or timing step beyond the documented FX treatment?</blockquote></div><div className="comparison-grid"><article><span className="eyebrow">Established evidence</span><h3>FX position identified</h3><p>The newer NBE notice expressly addresses service-export retention. Transaction facts match the selected profile.</p><button className="source-link" onClick={() => openSource(sources[1])}>Open NBE evidence</button></article><article><span className="eyebrow">Interpretation boundary</span><h3>Tax treatment not concluded</h3><p>The source pack does not establish a definitive transaction-specific filing outcome. The business receives a safe escalation package instead.</p><button className="source-link" onClick={() => openSource(sources[3])}>Open tax-law record</button></article></div><div className="review-resolution"><label className="field"><span>Professional resolution note</span><textarea defaultValue="Confirm the filing treatment with the organization’s tax professional. Preserve the FX source trail and transaction evidence; do not infer a tax exemption from the FX retention rule." /></label><button className="button button--primary" onClick={resolve} disabled={resolved}>{resolved ? <><Check /> Resolution recorded</> : <>Record resolution and update guidance <ArrowRight /></>}</button></div></section></Page> }
 
-function SourcesView({ openSource }: { openSource: (source: SourceDocument) => void }) {
-  return (
-    <div className="page">
-      <div className="page-heading"><div><span className="eyebrow">Bounded demo corpus</span><h1>Source library</h1><p>Provenance, versions, and downstream impact stay visible for every record.</p></div><button className="button button--primary" disabled title="Document ingestion is outside this demo build">Add source <span className="sr-only">Unavailable in demo</span></button></div>
-      <div className="metric-row">
-        <Metric label="Source records" value="4" note="3 current · 1 conflict" />
-        <Metric label="Authorities" value="3" note="Synthetic demo issuers" />
-        <Metric label="Latest check" value="Today" note="10:25 UTC" />
-      </div>
-      <section className="workspace-card source-table-card">
-        <div className="panel-heading"><div><h2>Regulatory records</h2><p>Every record in this build is illustrative, not an authoritative legal source.</p></div></div>
-        <div className="source-list">
-          {sources.map((source) => (
-            <button className="source-row" key={source.id} onClick={() => openSource(source)}>
-              <span className="source-row__icon"><FileText aria-hidden="true" /></span>
-              <span className="source-row__main"><strong>{source.title}</strong><small>{source.authority} · {source.documentType}</small></span>
-              <span className={`source-state source-state--${source.status}`}>{source.status === 'current' ? 'Current' : source.status === 'conflict' ? 'Conflict' : 'Superseded'}</span>
-              <span className="source-row__date">Effective {formatDate(source.effective)}</span>
-              <ChevronRight aria-hidden="true" />
-            </button>
-          ))}
-        </div>
-      </section>
-    </div>
-  )
-}
+function CuratorView({ record, announce, openSource }: { record: (title: string, detail: string, kind: AuditEvent['kind']) => void; announce: (message: string) => void; openSource: (source: SourceDocument) => void }) { const [method, setMethod] = useState<'manual' | 'upload' | 'monitor'>('monitor'); const [processed, setProcessed] = useState(false); const [routed, setRouted] = useState(false); function process() { setProcessed(true); setRouted(false); record('Source ingestion completed', `${method} ingestion mapped a candidate amendment relationship.`, 'evidence'); announce('Source processed and relationship mapped') } function route() { setRouted(true); record('Candidate routed to review', 'Potential amendment relationship sent to the policy review queue.', 'review'); announce('Candidate routed to policy review') } return <Page eyebrow="Source curator workspace" title="Ingest, extract, and connect official publications" description="Three bounded ingestion routes share one provenance and review pipeline."><div className="ingestion-tabs" role="tablist"><button className={method === 'manual' ? 'active' : ''} onClick={() => { setMethod('manual'); setProcessed(false); setRouted(false) }}><FileText /> Manual source</button><button className={method === 'upload' ? 'active' : ''} onClick={() => { setMethod('upload'); setProcessed(false); setRouted(false) }}><Upload /> Document upload</button><button className={method === 'monitor' ? 'active' : ''} onClick={() => { setMethod('monitor'); setProcessed(false); setRouted(false) }}><MonitorCheck /> Monitored page</button></div><section className="workspace-card ingestion-card"><div><span className="eyebrow">{method} ingestion</span><h2>{method === 'manual' ? 'Register official source metadata' : method === 'upload' ? 'Extract an official document' : 'Check the NBE directive index'}</h2><p>{method === 'manual' ? 'Enter authority, title, dates, official URL, language, and pinpoint.' : method === 'upload' ? 'Select a PDF. The proof of concept demonstrates the extraction and validation state without uploading private data.' : 'Compare the current page fingerprint with the last verified snapshot.'}</p></div>{method === 'manual' && <div className="form-grid"><label className="field"><span>Authority</span><input defaultValue="National Bank of Ethiopia" /></label><label className="field"><span>Official URL</span><input defaultValue="https://nbe.gov.et/" /></label></div>}{method === 'upload' && <label className="upload-zone"><Upload /><strong>Select official PDF</strong><span>PDF up to 20 MB · retained only for this demo session</span><input type="file" accept="application/pdf" /></label>}{method === 'monitor' && <div className="monitor-row"><span className="live-dot" /><div><strong>Foreign Exchange Management Directives</strong><small>Last checked 20 Sep 2026 · fingerprint changed</small></div><button className="source-link" onClick={() => openSource(sources[2])}>Open monitored source</button></div>}<button className="button button--primary" onClick={process}>{processed ? <><Check /> Processed</> : <>Extract and map relationship <ArrowRight /></>}</button></section>{processed && <section className="workspace-card extraction-result"><div><StatusBadge status={routed ? 'verified' : 'review'} /><h2>{routed ? 'Candidate added to the review queue' : 'Candidate amendment relationship found'}</h2><p>The extracted publication appears to change the service-export position shown in an older official FAQ.</p></div><div className="relationship-map"><span>FXD/01/2024 FAQ</span><ArrowRight /><strong>Amended for service exporters</strong><ArrowRight /><span>2026 public notice</span></div><button className="button button--secondary" onClick={route} disabled={routed}>{routed ? <><Check /> Routed to policy review</> : 'Route to policy review'}</button></section>}</Page> }
 
-function Metric({ label, value, note }: { label: string; value: string; note: string }) {
-  return <div className="metric"><span>{label}</span><strong>{value}</strong><small>{note}</small></div>
-}
+function AdminView({ announce }: { announce: (message: string) => void }) { const [plan, setPlan] = useState('Team'); return <Page eyebrow="Platform administration" title="Organizations, roles, and feature entitlements" description="Role permissions and subscription plans remain separate so authority is never implied by payment level."><div className="metric-row"><Metric label="Organizations" value="12" note="3 active demo tenants" /><Metric label="Active users" value="47" note="Across five role types" /><Metric label="Source monitors" value="6" note="2 require attention" /></div><div className="admin-grid"><section className="workspace-card"><div className="panel-heading"><div><h2>Organization access</h2><p>Example Export Services PLC (Synthetic)</p></div><select aria-label="Organization plan" value={plan} onChange={e => { setPlan(e.target.value); announce(`Organization plan changed to ${e.target.value}`) }}><option>Starter</option><option>Professional</option><option>Team</option><option>Institutional</option></select></div><div className="member-row"><span>BO</span><div><strong>Demo Business Owner</strong><small>Business Owner/Admin · Synthetic</small></div><em>Full organization access</em></div><div className="member-row"><span>FL</span><div><strong>Demo Finance Lead</strong><small>Finance/Operations Member · Synthetic</small></div><em>Guidance and actions</em></div><div className="member-row"><span>PR</span><div><strong>Demo Policy Reviewer</strong><small>External Policy Reviewer · Synthetic</small></div><em>Assigned cases only</em></div></section><section className="workspace-card"><h2>Plan entitlements</h2><p className="muted">Current plan: <strong>{plan}</strong></p>{['Unlimited rule verification', 'Personalized action plans', 'Regulatory alerts', 'Team assignments', 'Adviser collaboration'].map(feature => <div className="entitlement" key={feature}><CheckCircle2 /><span>{feature}</span><strong>Enabled</strong></div>)}<div className="entitlement locked"><LockKeyhole /><span>Custom source monitoring</span><strong>{plan === 'Institutional' ? 'Enabled' : 'Institutional'}</strong></div></section></div></Page> }
 
-function ReviewView({ openSource, record }: { openSource: (source: SourceDocument) => void; record: (title: string, detail: string, kind: AuditEvent['kind']) => void }) {
-  const [resolved, setResolved] = useState(false)
-  return (
-    <div className="page">
-      <div className="page-heading"><div><span className="eyebrow">Selective human review</span><h1>Review queue</h1><p>Only conflicts and high-impact interpretations stop for a policy professional.</p></div></div>
-      <section className="workspace-card review-card">
-        <div className="review-card__header">
-          <div className="conflict-icon"><AlertTriangle aria-hidden="true" /></div>
-          <div><StatusBadge status={resolved ? 'verified' : 'review'} /><h2>Which record-retention period governs this transaction?</h2><p>INV-2026-041 · Record retention · High-impact interpretation</p></div>
-        </div>
-        <div className="comparison-grid">
-          <article><span className="eyebrow">Available notice</span><h3>Indirect requirement</h3><blockquote>“Supporting export documentation should be retained for the period required under the applicable tax record rules.”</blockquote><button className="source-link" onClick={() => openSource(sources[2])}>Open notice context <ChevronRight aria-hidden="true" /></button></article>
-          <article><span className="eyebrow">Missing evidence</span><h3>Controlling period</h3><p>The cited notice does not identify the applicable retention period. The system will not invent one.</p><div className="missing-evidence"><CircleHelp aria-hidden="true" /> Locate the current controlling tax record provision.</div></article>
-        </div>
-        <div className="review-impact"><strong>Affected recommendation</strong><p>“Retain the evidence pack for [period]” is held and excluded from the final action plan until resolved.</p></div>
-        <div className="review-actions">
-          <button className="button button--secondary" onClick={() => openSource(sources[2])}>Inspect linked evidence</button>
-          <button className="button button--primary" disabled={resolved} onClick={() => { setResolved(true); record('Review resolution recorded', 'Demo reviewer marked the retention question resolved for the current guidance snapshot.', 'review') }}>
-            {resolved ? <><Check aria-hidden="true" /> Resolution recorded</> : <>Record demo resolution <ArrowRight aria-hidden="true" /></>}
-          </button>
-        </div>
-      </section>
-    </div>
-  )
-}
+function HistoryView({ events }: { events: AuditEvent[] }) { return <Page eyebrow="Traceable system history" title="Audit history" description="User inputs, evidence changes, generated guidance, access changes, and professional decisions remain distinguishable."><section className="workspace-card timeline-card"><ol className="timeline">{[...events].reverse().map(event => <li key={event.id}><span className={`timeline__marker timeline__marker--${event.kind}`} /><time>{event.time}</time><div><h2>{event.title}</h2><p>{event.detail}</p><span className="event-kind">{event.kind}</span></div></li>)}</ol></section></Page> }
 
-function HistoryView({ events }: { events: AuditEvent[] }) {
-  const ordered = useMemo(() => [...events].reverse(), [events])
-  return (
-    <div className="page">
-      <div className="page-heading"><div><span className="eyebrow">Traceable session</span><h1>Audit history</h1><p>Inputs, evidence changes, generated guidance, and professional decisions stay distinguishable.</p></div></div>
-      <section className="workspace-card timeline-card">
-        <ol className="timeline">
-          {ordered.map((event) => (
-            <li key={event.id}><span className={`timeline__marker timeline__marker--${event.kind}`} /><time>{event.time}</time><div><h2>{event.title}</h2><p>{event.detail}</p><span className="event-kind">{event.kind}</span></div></li>
-          ))}
-        </ol>
-      </section>
-    </div>
-  )
-}
+function SourceDrawer({ source, close }: { source: SourceDocument; close: () => void }) { useEffect(() => { const handler = (event: KeyboardEvent) => { if (event.key === 'Escape') close() }; document.addEventListener('keydown', handler); return () => document.removeEventListener('keydown', handler) }, [close]); return <div className="drawer-layer"><button className="drawer-scrim" aria-label="Close source details" onClick={close} /><aside className="drawer" role="dialog" aria-modal="true" aria-labelledby="source-title"><div className="drawer__header"><div><span className="eyebrow">Official source evidence</span><h2 id="source-title">{source.title}</h2></div><button autoFocus className="icon-button" onClick={close} aria-label="Close source details"><X /></button></div><div className="source-identity"><span className="source-row__icon"><FileText /></span><div><strong>{source.authority}</strong><p>{source.documentType} · {source.jurisdiction}</p></div></div><StatusBadge status={source.status} /><dl className="metadata-grid"><div><dt>Published</dt><dd>{formatDate(source.published)}</dd></div><div><dt>Effective</dt><dd>{formatDate(source.effective)}</dd></div><div><dt>Retrieved</dt><dd>{source.retrieved}</dd></div><div><dt>Language</dt><dd>{source.language}</dd></div><div className="wide"><dt>Version</dt><dd>{source.version}</dd></div></dl><section className="passage"><span className="eyebrow">Relevant passage · {source.pinpoint}</span><blockquote>{source.passage}</blockquote></section>{source.relationship && <div className="notice notice--info"><RefreshCcw /><div><strong>Version relationship</strong><p>{source.relationship}</p></div></div>}<a className="button button--primary button--full" href={source.url} target="_blank" rel="noreferrer">Open official publication <ArrowRight /></a><p className="drawer-note">Wayfinder provides decision support, not legal or tax advice. Confirm high-impact interpretations with a qualified professional.</p></aside></div> }
 
-function SourceDrawer({ source, onClose }: { source: SourceDocument; onClose: () => void }) {
-  return (
-    <div className="drawer-layer" role="presentation">
-      <button className="drawer-scrim" aria-label="Close source details" onClick={onClose} />
-      <aside className="drawer" role="dialog" aria-modal="true" aria-labelledby="source-title">
-        <div className="drawer__header"><div><span className="eyebrow">Source evidence</span><h2 id="source-title">{source.title}</h2></div><button className="icon-button" onClick={onClose} aria-label="Close source details"><X aria-hidden="true" /></button></div>
-        <div className="source-identity"><span className="source-row__icon"><FileText aria-hidden="true" /></span><div><strong>{source.authority}</strong><p>{source.documentType} · {source.jurisdiction}</p></div></div>
-        <dl className="metadata-grid">
-          <div><dt>Published</dt><dd>{formatDate(source.published)}</dd></div>
-          <div><dt>Effective</dt><dd>{formatDate(source.effective)}</dd></div>
-          <div><dt>Retrieved</dt><dd>{source.retrieved}</dd></div>
-          <div><dt>Version</dt><dd>{source.version}</dd></div>
-        </dl>
-        <section className="passage"><span className="eyebrow">Relevant passage · {source.pinpoint}</span><blockquote>{source.passage}</blockquote></section>
-        <div className="notice notice--info"><ShieldCheck aria-hidden="true" /><div><strong>Synthetic demonstration source</strong><p>This record illustrates provenance and citation behavior. It is not an authoritative legal text.</p></div></div>
-        <section className="impact-list"><span className="eyebrow">Used by</span><h3>{obligations.filter((item) => item.sourceIds.includes(source.id)).length || 1} guidance item</h3>{obligations.filter((item) => item.sourceIds.includes(source.id)).map((item) => <p key={item.id}>{item.title}</p>)}</section>
-        <button className="button button--secondary button--full" onClick={onClose}>Close source</button>
-      </aside>
-    </div>
-  )
-}
-
-function formatDate(value: string) {
-  if (!value) return 'Not provided'
-  return new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }).format(new Date(`${value}T00:00:00Z`))
-}
-
-export default App
+function Page({ eyebrow, title, description, children }: { eyebrow: string; title: string; description: string; children: React.ReactNode }) { return <div className="page"><div className="page-heading"><div><span className="eyebrow">{eyebrow}</span><h1>{title}</h1><p>{description}</p></div></div>{children}</div> }
+function Metric({ label, value, note }: { label: string; value: string; note: string }) { return <div className="metric"><span>{label}</span><strong>{value}</strong><small>{note}</small></div> }
+function formatDate(value: string) { return new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }).format(new Date(`${value}T00:00:00Z`)) }

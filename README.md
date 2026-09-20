@@ -1,8 +1,10 @@
 # Wayfinder
 
-Wayfinder is a hackathon proof of concept for evidence-backed regulatory action guidance. The primary demo follows an Ethiopian technology business receiving foreign payment for exported digital services and turns the transaction into traceable obligations, deadlines, actions, and professional-review questions.
+Wayfinder is a hackathon proof of concept for evidence-backed regulatory intelligence and action. It helps an Ethiopian technology or service-export business identify the current applicable foreign-exchange position, understand what changed, and turn official evidence into personalized actions, deadlines, documents, and professional-review questions.
 
-The current regulatory records are explicitly synthetic. They demonstrate provenance, conflict handling, source changes, and selective human review; they are not legal or tax advice.
+The bounded source corpus links to official National Bank of Ethiopia and Federal Ministry of Justice publications. The proof of concept remains decision support—not legal or tax advice—and all high-impact interpretations require qualified professional review.
+
+All people, organizations, invoices, transaction values, and account scenarios shown in the interface are clearly labeled synthetic demo data. They do not represent real individuals or businesses.
 
 ## Run locally
 
@@ -28,13 +30,30 @@ On Windows, replace `python3` with `py -3` when necessary.
 
 ## Demo path
 
-1. Review the prefilled service-export transaction.
-2. Confirm or leave open the material assumptions.
-3. Generate the action plan.
-4. Open citations from individual obligations.
-5. Visit the review queue to inspect the unresolved evidence conflict.
-6. Record the demo resolution.
-7. Open audit history to see the transaction, guidance, evidence, and review events separately.
+1. Start on the public regulatory-watch experience and inspect an official source.
+2. Open demo access and enter as the Business Owner.
+3. Verify the prefilled service-export transaction.
+4. Review the current applicable position, trust assessment, and old-versus-current comparison.
+5. Complete actions, inspect deadlines/documents, and copy the professional question package.
+6. Switch to the Policy Reviewer and record the scoped resolution.
+7. Switch to the Source Curator and demonstrate manual, PDF, and monitored-page ingestion.
+8. Switch to Platform Administrator and inspect roles, plans, and entitlements.
+9. Open audit history to see evidence, access, guidance, and review events separately.
+
+## Implemented product surfaces
+
+- Public regulatory updates and official source library
+- Login with one-click access for five demo identities
+- Role-aware business, reviewer, curator, and administration workspaces
+- Subscription-plan and feature-entitlement representation
+- Business profile and transaction-specific rule verification
+- Current-rule conclusion and trust assessment
+- Previous-versus-current rule comparison
+- Personalized action, deadline, document, and escalation outputs
+- Selective professional review and audit history
+- Manual, document-upload, and monitored-page ingestion demonstrations
+
+See `AI_BUILD_LOG.md` for the human/AI division of responsibility.
 
 ## Project guidance
 

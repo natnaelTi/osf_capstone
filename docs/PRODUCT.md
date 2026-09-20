@@ -20,10 +20,25 @@ Obligations begin when the invoice is issued or payment is received. Users often
 
 ## Output priority
 
-1. Evidence-backed obligations and deadlines.
-2. Practical action checklist.
-3. Questions and escalation package for a professional adviser.
-4. Comparison of previous and current regulatory requirements.
+1. Confirm the currently applicable rule and explain why it applies.
+2. Generate an evidence-backed compliance checklist.
+3. Personalize obligations, deadlines, and required documents.
+4. Produce questions and an escalation package for a professional adviser.
+5. Compare previous and current regulatory requirements.
+
+## Access, roles, and plans
+
+Public visitors can browse regulatory updates and official sources without an account. Personalized guidance, saved cases, alerts, document analysis, collaboration, and audit history require sign-in.
+
+Roles and subscription tiers are independent:
+
+- Business Owner/Admin manages the organization, team, plan, and guidance cases.
+- Finance/Operations Member records transactions and completes actions.
+- Policy/Legal Reviewer resolves assigned conflicts and high-risk interpretations.
+- Source Curator ingests sources and manages rule versions.
+- Platform Administrator manages organizations, roles, plans, entitlements, and governance.
+
+The proof of concept represents Starter, Professional, Team, and Institutional plans through feature entitlements. It does not implement billing.
 
 ## Proof-of-concept flow
 
@@ -58,13 +73,19 @@ English is the proof-of-concept language. Separate content from presentation, pr
 
 ## Minimum product surfaces
 
+- Public regulatory updates and source access
+- Login and one-click demo-role access
+- Organization regulatory profile and subscription context
+- Current-rule verification
 - Transaction intake and assumption confirmation
 - Guidance result and obligation/deadline checklist
+- Required-document and expert-question package
 - Source/evidence viewer
 - Conflict and professional-review state
 - Regulatory source ingestion/status view
 - Prior-versus-current change view
 - Demo-ready audit trail
+- Role-aware reviewer, curator, and platform-administration workspaces
 
 ## Non-goals
 
@@ -84,4 +105,3 @@ English is the proof-of-concept language. Separate content from presentation, pr
 - Assumptions, conflicts, and professional-review items are unmistakable.
 - A source change and its downstream impact can be demonstrated.
 - The product communicates extensibility without pretending the proof of concept is comprehensive.
-
