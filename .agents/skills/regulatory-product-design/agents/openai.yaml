@@ -1,0 +1,5 @@
+interface:
+  display_name: "Regulatory Product Design"
+  short_description: "Design trustworthy regulatory product interfaces"
+  brand_color: "#1E3A8A"
+  default_prompt: "Use $regulatory-product-design to design and validate this regulatory product workflow."
