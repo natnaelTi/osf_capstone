@@ -45,10 +45,13 @@
 
 ### Platform administration
 
-1. Organizations and plan distribution.
-2. Roles and permissions.
-3. Subscription-tier entitlements.
-4. Audit and system-health summary.
+1. Monitoring-agent health, current mode, and last/next run.
+2. Manual live scan and clearly labeled controlled-change demonstration.
+3. Schedule, change sensitivity, review threshold, reviewer, and publication boundary.
+4. Source registry with authority, jurisdiction, domain, language, URL, fingerprint health, and active state.
+5. Findings split into observed evidence, AI interpretation, recommended action, and professional judgment.
+6. Organizations and plan distribution.
+7. Roles, permissions, subscription-tier entitlements, and audit summary.
 
 ## States
 
@@ -87,5 +90,8 @@
 - [ ] Reviewer resolution updates the business guidance and audit trail.
 - [ ] Curator ingestion demonstrates manual, upload, and monitored routes.
 - [ ] Administrator view demonstrates roles and subscription entitlements.
+- [ ] Administrator can configure the bounded agent and its monitored sources.
+- [ ] A live scan or controlled fixture produces an auditable run and a human-review finding.
+- [ ] Controlled demonstration content is never presented as a real regulator publication.
 - [ ] Public visitors can access updates and sources without signing in.
 - [ ] The primary demo contains no dead controls.

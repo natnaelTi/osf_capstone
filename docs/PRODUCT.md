@@ -60,6 +60,12 @@ Combine three input methods:
 
 Bound the demo corpus to approximately 5–10 authoritative documents such as proclamations or laws, regulator/ministry directives, official notices, announcements, and press releases. Every item requires provenance and version metadata.
 
+### Wayfinder Watch monitoring agent
+
+The proof of concept includes one bounded monitoring agent that checks administrator-configured official sources on a schedule or on demand. It fingerprints normalized source content, identifies changes, uses structured AI extraction when configured, and routes findings through curator and policy-review boundaries.
+
+The agent may autonomously observe and structure evidence. It may not autonomously publish consequential interpretations. Foreign-exchange, tax, penalty, licensing, filing, conflict, and probable-supersession findings require human review. A controlled change fixture is available for reliable demonstrations and must remain visibly labeled as simulated rather than a regulator publication.
+
 ## Review model
 
 - Low-risk factual extraction may be published with citations after automated validation.

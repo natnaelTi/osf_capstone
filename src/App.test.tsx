@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it } from 'vitest'
 import App from './App'
 
-afterEach(cleanup)
+afterEach(() => { cleanup(); window.localStorage.clear() })
 
 describe('Wayfinder judge-ready flow', () => {
   it('keeps regulatory updates and official evidence public', async () => {
@@ -53,5 +53,24 @@ describe('Wayfinder judge-ready flow', () => {
     await user.click(screen.getByRole('button', { name: /policy reviewer/i }))
     await user.click(screen.getByRole('button', { name: /record resolution and update guidance/i }))
     expect(screen.getByRole('button', { name: /resolution recorded/i })).toBeDisabled()
+  })
+
+  it('runs a controlled agent change through human review roles', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await user.click(screen.getByRole('button', { name: /sign in/i }))
+    await user.click(screen.getByRole('button', { name: /platform administrator/i }))
+    await user.click(await screen.findByRole('button', { name: /run controlled change demo/i }))
+    expect(await screen.findByText(/candidate foreign-exchange directive amendment detected/i)).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /^route to policy review$/i }))
+    await user.click(screen.getByRole('button', { name: /switch demo role/i }))
+    await user.click(screen.getByRole('button', { name: /sign in/i }))
+    await user.click(screen.getByRole('button', { name: /policy reviewer/i }))
+    expect(await screen.findByText(/agent findings awaiting professional judgment/i)).toBeInTheDocument()
+    await user.click(await screen.findByRole('button', { name: /approve within recorded scope/i }))
+    expect(await screen.findByText(/no agent findings are waiting for policy review/i)).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /switch demo role/i }))
+    await user.click(screen.getByRole('button', { name: /regulatory updates/i }))
+    expect(await screen.findByRole('heading', { name: /human-approved monitored changes/i })).toBeInTheDocument()
   })
 })

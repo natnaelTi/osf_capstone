@@ -20,6 +20,7 @@ Wayfinder was designed and implemented with Codex as the AI software-development
 | Architecture | Proposed the evidence/version/applicability/action/review model | User approved product scope and role/tier requirements |
 | Implementation | Generated React/TypeScript components, fixtures, responsive CSS, and interaction logic | User reviews product direction and final submission claims |
 | Quality | Generated tests, lint/build fixes, accessibility states, and audit findings | Policy professional must validate high-impact guidance |
+| Monitoring agent | Implemented scheduled/manual scanning, change fingerprints, structured extraction, source configuration, and review routing | Administrators choose sources and people validate consequential findings |
 
 ## Guardrails applied
 
@@ -28,6 +29,9 @@ Wayfinder was designed and implemented with Codex as the AI software-development
 - The product does not claim legal certainty or regulator endorsement.
 - Tax treatment is held for professional review rather than inferred from foreign-exchange guidance.
 - Public source access remains available without a subscription.
+- The monitoring agent can observe and structure changes but cannot publish consequential interpretation without human approval.
+- Controlled demo changes are labeled and cannot be mistaken for regulator publications.
+- Server-side source fetching uses an explicit public-host allowlist.
 
 ## Verification commands
 
