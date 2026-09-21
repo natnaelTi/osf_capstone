@@ -65,9 +65,9 @@ function notes(slide, value) { slide.speakerNotes.textFrame.setText(value) }
 const slides = [
   ['The Problem', 'Businesses Discover Regulatory Obligations Too Late', 'Relevant information is fragmented across official pages, notices, directives, and scanned documents. Teams often investigate only when a bank, accountant, or filing deadline forces the question.', ['Older authentic guidance remains searchable', 'Applicability changes by date, audience, and transaction', 'A publication rarely explains the next operational step']],
   ['The User', 'Service Exporters Need Answers At The Transaction Moment', 'The primary user is a founder or finance lead issuing an invoice or receiving foreign payment for digital services.', ['Confirm the current foreign-exchange position', 'Prepare the right evidence before tax filing', 'Escalate only the unresolved professional question']],
-  ['The Evidence Gap', 'An Authentic Source May No Longer State The Current Position', 'Wayfinder preserves the version trail instead of silently selecting one document.', ['2024 FAQ showed a 50% retention position', '2026 notice identified a 100% position for service exporters', 'Audience and effective date determine applicability']],
+  ['The Evidence Gap', 'An Authentic Source May No Longer State The Current Position', 'Wayfinder preserves the version trail, then checks the audience and effective date before identifying the applicable position.', ['2024 FAQ showed a 50% retention position', '2026 notice identified a 100% position for service exporters', 'Audience and effective date determine applicability']],
   ['The Solution', 'Wayfinder Connects Evidence, Interpretation, Action, And Judgment', 'The product separates four information layers so generated reasoning never appears to be official text.', ['Verified source evidence with dates and provenance', 'Generated interpretation with stated assumptions', 'Transaction-specific actions and evidence requirements', 'Recorded professional judgment for high-impact questions']],
-  ['The Working Prototype', 'A Transaction Becomes A Cited Compliance Checklist', 'A user describes the export transaction, confirms material facts, and receives the current position, required documents, deadlines, and an expert question package.', ['Current-rule verification', 'Previous-versus-current comparison', 'Action checklist and evidence pack']],
+  ['The Working Prototype', 'A Transaction Becomes A Cited Compliance Checklist', 'The prototype guides a user from transaction facts to a source-cited action plan through three clear stages.', ['Current-rule verification', 'Previous-versus-current comparison', 'Action checklist and evidence pack']],
   ['Autonomous Monitoring', 'Wayfinder Watch Detects Changes And Preserves Human Control', 'The operational agent scans administrator-approved sources, fingerprints changes, structures candidate facts, and routes consequential interpretation to people.', ['Manual and scheduled live scans', 'Configurable official-source registry', 'Curator and policy-review queues', 'Timestamped run and decision history']],
   ['Trust And Safety', 'Consequential Guidance Cannot Publish Without The Required Review', 'Foreign exchange, tax, filing, penalty, licensing, conflict, and probable supersession findings remain reviewable.', ['No unsupported confidence score', 'No unrestricted legal-advice chatbot', 'No silent conflict resolution', 'Synthetic fixtures remain clearly labeled']],
   ['Scale Model', 'Jurisdiction Packs Preserve Local Relevance While Supporting Expansion', 'The service-export workflow provides the first deep vertical. Goods exports add customs, commodity, logistics, permit, tax, and foreign-exchange evidence.', ['Reusable evidence and review architecture', 'Local sources and professional reviewers', 'English-first interface with multilingual-ready content structures']],
@@ -79,13 +79,32 @@ slides.forEach(([kicker, heading, subtitle, points], offset) => {
   const dark = index === 7 || index === 9
   const slide = presentation.slides.add(); base(slide, index, dark); title(slide, kicker, heading, subtitle, dark)
   if (index === 4) {
-    text(slide, '50%', { left: 76, top: 410, width: 260, height: 90, size: 76, color: dark ? colors.white : colors.navy, bold: true })
-    text(slide, 'Older Published Position', { left: 76, top: 500, width: 300, height: 34, size: 18, color: colors.muted, bold: true })
-    text(slide, '100%', { left: 560, top: 410, width: 300, height: 90, size: 76, color: colors.amber, bold: true })
-    text(slide, 'Current Service-Exporter Position', { left: 560, top: 500, width: 420, height: 34, size: 18, color: colors.muted, bold: true })
+    box(slide, { left: 76, top: 392, width: 430, height: 142, fill: '#F7F9FC', line: colors.line, radius: 10 })
+    box(slide, { left: 76, top: 392, width: 430, height: 5, fill: '#8190A3' })
+    text(slide, 'OLDER GUIDANCE', { left: 98, top: 416, width: 220, height: 22, size: 12, color: '#627288', bold: true })
+    text(slide, '50% retention', { left: 98, top: 446, width: 340, height: 45, size: 31, color: colors.navy, bold: true })
+    text(slide, '2024 NBE FAQ', { left: 98, top: 500, width: 260, height: 22, size: 14, color: colors.muted, bold: true })
+    text(slide, '→', { left: 526, top: 438, width: 80, height: 60, size: 40, color: colors.amber, bold: true, align: 'center' })
+    box(slide, { left: 628, top: 392, width: 476, height: 142, fill: '#FFF7ED', line: '#E7C79F', radius: 10 })
+    box(slide, { left: 628, top: 392, width: 476, height: 5, fill: colors.amber })
+    text(slide, 'CURRENT SERVICE-EXPORTER GUIDANCE', { left: 650, top: 416, width: 390, height: 22, size: 12, color: colors.amber, bold: true })
+    text(slide, '100% retention', { left: 650, top: 446, width: 390, height: 45, size: 31, color: colors.navy, bold: true })
+    text(slide, '2026 NBE notice', { left: 650, top: 500, width: 300, height: 22, size: 14, color: colors.muted, bold: true })
+    text(slide, 'Applicability depends on the transaction date and audience.', { left: 76, top: 555, width: 920, height: 28, size: 15, color: colors.green, bold: true })
   } else if (index === 6) {
-    text(slide, '10 MIN', { left: 840, top: 405, width: 330, height: 100, size: 72, color: colors.amber, bold: true, align: 'right' })
-    bullets(slide, points, { top: 400, columns: 1, dark })
+    const stages = [
+      ['01', 'Describe The Transaction', 'Confirm the service, payment route, date, and business profile.'],
+      ['02', 'Verify The Current Position', 'Compare applicable official publications and expose the source trail.'],
+      ['03', 'Receive The Action Plan', 'Get required documents, deadlines, and any question held for expert review.'],
+    ]
+    stages.forEach(([number, label, detail], stageIndex) => {
+      const left = 76 + stageIndex * 350
+      box(slide, { left, top: 394, width: 320, height: 176, fill: '#F4F7FB', line: colors.line, radius: 10 })
+      box(slide, { left, top: 394, width: 320, height: 5, fill: colors.amber })
+      text(slide, number, { left: left + 22, top: 418, width: 50, height: 20, size: 12, color: colors.amber, bold: true })
+      text(slide, label, { left: left + 22, top: 450, width: 276, height: 48, size: 20, color: colors.navy, bold: true })
+      text(slide, detail, { left: left + 22, top: 510, width: 276, height: 48, size: 14, color: colors.muted })
+    })
   } else {
     bullets(slide, points, { top: 400, columns: points.length > 3 ? 2 : 1, dark })
   }
@@ -113,6 +132,6 @@ const result = await finalizePresentation({
   layoutArgs: ['--expected-slide-size-emu', '12192000,6858000', '--validate-heading-fit'],
   fontPolicy: { basis: 'design', families: [font] },
   verifyArtifactToolImport: true,
-  receiptPath: path.join(stagingDir, 'wayfinder-pitch.validation.json'),
+  receiptPath: path.join(stagingDir, `${path.basename(FINAL_PPTX)}.validation.json`),
 })
 if (!result) throw new Error('Presentation finalization did not return a result')
