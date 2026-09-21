@@ -10,7 +10,7 @@ export const initialAgentState: AgentState = {
     id: 'wayfinder-watch',
     name: 'Wayfinder Watch',
     enabled: true,
-    schedule: '0 */6 * * *',
+    schedule: '0 5 * * *',
     reviewThreshold: 'high',
     publicationRule: 'human-approval-required',
     assignedReviewer: 'Policy reviewer',
