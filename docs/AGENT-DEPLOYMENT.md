@@ -31,7 +31,7 @@ For the time-boxed judging preview, `ALLOW_DEMO_ADMIN=true` permits the role-dem
 
 ## 3. Deploy
 
-Import the GitHub repository into Vercel and select the `codex/regulatory-product-setup` branch. Vercel builds the Vite frontend and the functions under `api/`. The `vercel.json` schedule calls `/api/agent/run` every six hours in UTC. The handler also checks the configured interval before scanning.
+Import the GitHub repository into Vercel and select the `codex/regulatory-product-setup` branch. Vercel builds the Vite frontend and the functions under `api/`. The `vercel.json` schedule calls `/api/agent/run` once daily at 05:00 UTC, which is compatible with the Vercel Hobby plan. Administrators may run additional scans manually.
 
 ## 4. Establish the baseline
 

@@ -1,6 +1,6 @@
 export type Role = 'public' | 'owner' | 'finance' | 'reviewer' | 'curator' | 'admin'
 export type Plan = 'Public' | 'Starter' | 'Professional' | 'Team' | 'Institutional'
-export type View = 'public' | 'updates' | 'sources' | 'login' | 'overview' | 'verify' | 'actions' | 'review' | 'curator' | 'admin' | 'history'
+export type View = 'public' | 'updates' | 'sources' | 'pitch' | 'guide' | 'login' | 'overview' | 'verify' | 'actions' | 'review' | 'curator' | 'admin' | 'history'
 export type Status = 'verified' | 'interpretation' | 'review' | 'stale' | 'superseded' | 'upcoming'
 
 export interface DemoIdentity { role: Role; name: string; title: string; organization: string; plan: Plan; description: string }
