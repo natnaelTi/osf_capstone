@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   AlertTriangle, ArrowRight, Bell, BookOpen, Building2, Check, CheckCircle2, ChevronRight,
   ClipboardList, FileCheck2, FileText, History, LayoutDashboard, LockKeyhole,
@@ -8,7 +8,9 @@ import {
 import { buildActions, currentRule, demoIdentities, initialAuditEvents, initialProfile, initialTransaction, previousRule, sources, updates } from './data'
 import { AgentOperations } from './AgentOperations'
 import { AgentCuratorQueue, AgentPolicyQueue, AgentPublishedUpdates } from './AgentReviewQueues'
-import type { AuditEvent, BusinessProfile, DemoIdentity, GuidanceAction, Role, SourceDocument, Status, Transaction, View } from './types'
+import { loadAgentState } from './agentApi'
+import { LandingPage, PitchDeckView, UserGuideView } from './PublicExperience'
+import type { AgentState, AuditEvent, BusinessProfile, DemoIdentity, GuidanceAction, Role, SourceDocument, Status, Transaction, View } from './types'
 
 const statusLabels: Record<Status, string> = {
   verified: 'Verified from source', interpretation: 'Interpretation', review: 'Professional review required', stale: 'Source may be outdated', superseded: 'Superseded', upcoming: 'Upcoming',
@@ -37,10 +39,23 @@ export default function App() {
   const [events, setEvents] = useState<AuditEvent[]>(initialAuditEvents)
   const [menuOpen, setMenuOpen] = useState(false)
   const [announcement, setAnnouncement] = useState('')
+  const [corpusCheckedAt, setCorpusCheckedAt] = useState<string | null>(null)
+
+  const updateCorpusStatus = useCallback((state: AgentState) => {
+    const liveRun = state.runs.find(run => run.trigger !== 'controlled-demo' && run.completedAt)
+    if (liveRun?.completedAt) setCorpusCheckedAt(liveRun.completedAt)
+  }, [])
+
+  useEffect(() => {
+    loadAgentState().then(updateCorpusStatus).catch(() => undefined)
+    const handleAgentState = (event: Event) => updateCorpusStatus((event as CustomEvent<AgentState>).detail)
+    window.addEventListener('wayfinder:agent-state', handleAgentState)
+    return () => window.removeEventListener('wayfinder:agent-state', handleAgentState)
+  }, [updateCorpusStatus])
 
   const actions = useMemo(() => buildActions(profile, transaction, reviewResolved), [profile, transaction, reviewResolved])
   function record(title: string, detail: string, kind: AuditEvent['kind']) {
-    setEvents(current => [...current, { id: `ev-${current.length + 1}`, time: new Intl.DateTimeFormat('en', { hour: '2-digit', minute: '2-digit' }).format(new Date()), title, detail, kind }])
+    setEvents(current => [...current, { id: `ev-${current.length + 1}`, time: formatTimestamp(new Date().toISOString()), title, detail, kind }])
   }
 
   function navigate(next: View) { setView(next); setMenuOpen(false); window.scrollTo({ top: 0, behavior: 'smooth' }) }
@@ -77,7 +92,7 @@ export default function App() {
       <a className="skip-link" href="#main">Skip to main content</a>
       <div className="sr-only" aria-live="polite">{announcement}</div>
       {identity ? (
-        <WorkspaceShell identity={identity} view={view} navigate={navigate} menuOpen={menuOpen} setMenuOpen={setMenuOpen} signOut={signOut}>
+        <WorkspaceShell identity={identity} view={view} navigate={navigate} menuOpen={menuOpen} setMenuOpen={setMenuOpen} signOut={signOut} corpusCheckedAt={corpusCheckedAt}>
           {view === 'overview' && <BusinessOverview identity={identity} navigate={navigate} reviewResolved={reviewResolved} />}
           {view === 'verify' && <VerifyView profile={profile} setProfile={setProfile} transaction={transaction} setTransaction={setTransaction} verified={verified} checking={checking} runVerification={runVerification} actions={actions} completed={completed} toggleAction={toggleAction} openSource={setSelectedSource} navigate={navigate} reviewResolved={reviewResolved} />}
           {view === 'actions' && <ActionPlan actions={actions} completed={completed} toggleAction={toggleAction} openSource={setSelectedSource} navigate={navigate} transaction={transaction} profile={profile} />}
@@ -87,12 +102,16 @@ export default function App() {
           {view === 'curator' && <CuratorView record={record} announce={setAnnouncement} openSource={setSelectedSource} />}
           {view === 'admin' && <AdminView announce={setAnnouncement} record={(title, detail) => record(title, detail, 'system')} />}
           {view === 'history' && <HistoryView events={events} />}
+          {view === 'pitch' && <PitchDeckView navigate={navigate} />}
+          {view === 'guide' && <UserGuideView navigate={navigate} />}
         </WorkspaceShell>
       ) : (
         <PublicShell view={view} navigate={navigate}>
-          {view === 'public' && <PublicHome navigate={navigate} openSource={setSelectedSource} />}
+          {view === 'public' && <LandingPage navigate={navigate} openSource={setSelectedSource} />}
           {view === 'updates' && <UpdatesView openSource={setSelectedSource} />}
           {view === 'sources' && <SourcesView openSource={setSelectedSource} />}
+          {view === 'pitch' && <PitchDeckView navigate={navigate} />}
+          {view === 'guide' && <UserGuideView navigate={navigate} />}
           {view === 'login' && <LoginView enterDemo={enterDemo} navigate={navigate} />}
         </PublicShell>
       )}
@@ -102,10 +121,10 @@ export default function App() {
 }
 
 function PublicShell({ view, navigate, children }: { view: View; navigate: (view: View) => void; children: React.ReactNode }) {
-  return <><header className="public-header"><button className="brand-button" onClick={() => navigate('public')}><Brand /></button><nav aria-label="Public navigation"><button className={view === 'updates' ? 'active' : ''} onClick={() => navigate('updates')}>Regulatory updates</button><button className={view === 'sources' ? 'active' : ''} onClick={() => navigate('sources')}>Official sources</button><button className="button button--primary" onClick={() => navigate('login')}><LogIn aria-hidden="true" /> Sign in</button></nav></header><main id="main" tabIndex={-1}>{children}</main><footer className="public-footer"><Brand /><p>Evidence-backed guidance for informed action. Wayfinder does not replace qualified legal or tax advice.</p></footer></>
+  return <><header className="public-header"><button className="brand-button" onClick={() => navigate('public')}><Brand /></button><nav aria-label="Public navigation"><button className={view === 'updates' ? 'active' : ''} onClick={() => navigate('updates')}>Regulatory Updates</button><button className={view === 'sources' ? 'active' : ''} onClick={() => navigate('sources')}>Official Sources</button><button className={view === 'pitch' ? 'active' : ''} onClick={() => navigate('pitch')}>Pitch Deck</button><button className={view === 'guide' ? 'active' : ''} onClick={() => navigate('guide')}>User Guide</button><button className="button button--primary" onClick={() => navigate('login')}><LogIn aria-hidden="true" /> Sign In</button></nav></header><main id="main" tabIndex={-1}>{children}</main><footer className="public-footer"><Brand /><p>Evidence-backed guidance for informed action. Wayfinder does not replace qualified legal or tax advice.</p></footer></>
 }
 
-function PublicHome({ navigate, openSource }: { navigate: (view: View) => void; openSource: (source: SourceDocument) => void }) {
+export function PublicHome({ navigate, openSource }: { navigate: (view: View) => void; openSource: (source: SourceDocument) => void }) {
   return <div className="public-page"><section className="hero"><div><span className="eyebrow">Information you can trust and act on</span><h1>Know which rule applies—not just what was published.</h1><p>Wayfinder helps Ethiopian businesses identify current regulatory requirements, understand what changed, and turn official evidence into practical next steps.</p><div className="hero-actions"><button className="button button--primary" onClick={() => navigate('login')}>Verify a rule with demo access <ArrowRight aria-hidden="true" /></button><button className="button button--secondary" onClick={() => navigate('updates')}>Browse public updates</button></div></div><div className="hero-proof"><span className="proof-kicker"><ShieldCheck aria-hidden="true" /> Traceable conclusion</span><h2>Service-export retention position</h2><StatusBadge status="verified" /><strong>100% retention identified</strong><p>Effective 11 February 2026 for service exporters, based on a newer official NBE notice.</p><button className="source-link" onClick={() => openSource(sources[1])}>Inspect official evidence <ChevronRight aria-hidden="true" /></button></div></section><section className="public-section"><div className="section-title"><div><span className="eyebrow">Why this matters</span><h2>Authentic information may still be outdated.</h2></div><p>Wayfinder reconstructs the version trail before it generates guidance.</p></div><div className="change-strip"><RuleMini label="Older published position" value="50% retained" status="superseded" /><ArrowRight aria-hidden="true" /><RuleMini label="Current service-export position" value="100% retained" status="verified" /></div></section><section className="public-section"><div className="section-title"><div><span className="eyebrow">Latest verified changes</span><h2>Public regulatory watch</h2></div><button className="text-button" onClick={() => navigate('updates')}>View all updates <ArrowRight aria-hidden="true" /></button></div><UpdateCards items={updates.slice(0, 2)} openSource={openSource} /></section></div>
 }
 
@@ -115,10 +134,11 @@ function LoginView({ enterDemo, navigate }: { enterDemo: (identity: DemoIdentity
   return <div className="login-page"><section className="login-intro"><Brand /><span className="eyebrow">Hackathon proof of concept</span><h1>Enter the product from every trust boundary.</h1><p>Choose a demo identity to see how evidence, interpretation, action, and professional judgment move across Wayfinder.</p><button className="text-button" onClick={() => navigate('updates')}>Continue with public access <ArrowRight aria-hidden="true" /></button></section><section className="login-card"><div className="login-form"><h2>Sign in</h2><label className="field"><span>Email</span><input type="email" placeholder="you@organization.com" /></label><label className="field"><span>Password</span><input type="password" placeholder="••••••••" /></label><button className="button button--primary button--full" type="button" onClick={() => enterDemo(demoIdentities[0])}>Sign in to demo workspace</button></div><div className="divider"><span>Or choose a demo role</span></div><div className="identity-list">{demoIdentities.map(item => <button key={item.role} className="identity-card" onClick={() => enterDemo(item)}><span className="identity-icon">{item.role === 'reviewer' ? <UserRoundCheck /> : item.role === 'curator' ? <MonitorCheck /> : item.role === 'admin' ? <Settings2 /> : <Building2 />}</span><span><strong>{item.title}</strong><small>{item.description}</small></span><ChevronRight aria-hidden="true" /></button>)}</div></section></div>
 }
 
-function WorkspaceShell({ identity, view, navigate, menuOpen, setMenuOpen, signOut, children }: { identity: DemoIdentity; view: View; navigate: (view: View) => void; menuOpen: boolean; setMenuOpen: (value: boolean) => void; signOut: () => void; children: React.ReactNode }) {
-  const common = [{ id: 'overview' as View, label: 'Overview', icon: LayoutDashboard }, { id: 'verify' as View, label: 'Verify a rule', icon: Search }, { id: 'actions' as View, label: 'Action plans', icon: ClipboardList }, { id: 'updates' as View, label: 'Regulatory watch', icon: Bell }, { id: 'sources' as View, label: 'Official sources', icon: BookOpen }, { id: 'history' as View, label: 'Audit history', icon: History }]
-  const items = identity.role === 'reviewer' ? [{ id: 'review' as View, label: 'Review queue', icon: UserRoundCheck }, { id: 'sources' as View, label: 'Evidence library', icon: BookOpen }, { id: 'history' as View, label: 'Review audit', icon: History }] : identity.role === 'curator' ? [{ id: 'curator' as View, label: 'Source operations', icon: MonitorCheck }, { id: 'sources' as View, label: 'Source library', icon: BookOpen }, { id: 'history' as View, label: 'Ingestion audit', icon: History }] : identity.role === 'admin' ? [{ id: 'admin' as View, label: 'Platform overview', icon: Settings2 }, { id: 'sources' as View, label: 'Source authorities', icon: BookOpen }, { id: 'history' as View, label: 'System audit', icon: History }] : common
-  return <div className="app-shell"><aside className={`sidebar ${menuOpen ? 'sidebar--open' : ''}`}><div className="sidebar__top"><Brand /><button className="icon-button sidebar__close" onClick={() => setMenuOpen(false)} aria-label="Close navigation"><X /></button></div><nav aria-label="Workspace navigation">{items.map(item => { const Icon = item.icon; return <button key={item.id} className={`nav-item ${view === item.id ? 'nav-item--active' : ''}`} onClick={() => navigate(item.id)}><Icon /><span>{item.label}</span></button> })}</nav><div className="workspace-identity"><span>{identity.name.slice(0, 2).toUpperCase()}</span><div><strong>{identity.name}</strong><small>{identity.title} · {identity.plan}</small></div></div><button className="nav-item" onClick={signOut}><LogIn /><span>Switch demo role</span></button></aside>{menuOpen && <button className="scrim" aria-label="Close navigation" onClick={() => setMenuOpen(false)} />}<div className="app-main"><header className="topbar"><button className="icon-button mobile-menu" onClick={() => setMenuOpen(true)} aria-label="Open navigation"><Menu /></button><div className="topbar__context"><span className="eyebrow">{identity.plan} plan</span><strong>{identity.organization}</strong></div><div className="corpus-status"><span className="live-dot" /> Official corpus checked 20 Sep 2026</div><span className="role-chip">{identity.title}</span></header><main id="main" tabIndex={-1}>{children}</main></div></div>
+function WorkspaceShell({ identity, view, navigate, menuOpen, setMenuOpen, signOut, corpusCheckedAt, children }: { identity: DemoIdentity; view: View; navigate: (view: View) => void; menuOpen: boolean; setMenuOpen: (value: boolean) => void; signOut: () => void; corpusCheckedAt: string | null; children: React.ReactNode }) {
+  const common = [{ id: 'overview' as View, label: 'Overview', icon: LayoutDashboard }, { id: 'verify' as View, label: 'Verify A Rule', icon: Search }, { id: 'actions' as View, label: 'Action Plans', icon: ClipboardList }, { id: 'updates' as View, label: 'Regulatory Watch', icon: Bell }, { id: 'sources' as View, label: 'Official Sources', icon: BookOpen }, { id: 'history' as View, label: 'Audit History', icon: History }]
+  const roleItems = identity.role === 'reviewer' ? [{ id: 'review' as View, label: 'Review Queue', icon: UserRoundCheck }, { id: 'sources' as View, label: 'Evidence Library', icon: BookOpen }, { id: 'history' as View, label: 'Review Audit', icon: History }] : identity.role === 'curator' ? [{ id: 'curator' as View, label: 'Source Operations', icon: MonitorCheck }, { id: 'sources' as View, label: 'Source Library', icon: BookOpen }, { id: 'history' as View, label: 'Ingestion Audit', icon: History }] : identity.role === 'admin' ? [{ id: 'admin' as View, label: 'Platform Overview', icon: Settings2 }, { id: 'sources' as View, label: 'Source Authorities', icon: BookOpen }, { id: 'history' as View, label: 'System Audit', icon: History }] : common
+  const items = [...roleItems, { id: 'guide' as View, label: 'User Guide', icon: BookOpen }, { id: 'pitch' as View, label: 'Pitch Deck', icon: FileText }]
+  return <div className="app-shell"><aside className={`sidebar ${menuOpen ? 'sidebar--open' : ''}`}><div className="sidebar__top"><Brand /><button className="icon-button sidebar__close" onClick={() => setMenuOpen(false)} aria-label="Close navigation"><X /></button></div><nav aria-label="Workspace navigation">{items.map(item => { const Icon = item.icon; return <button key={item.id} className={`nav-item ${view === item.id ? 'nav-item--active' : ''}`} onClick={() => navigate(item.id)}><Icon /><span>{item.label}</span></button> })}</nav><div className="workspace-identity"><span>{identity.name.slice(0, 2).toUpperCase()}</span><div><strong>{identity.name}</strong><small>{titleCase(identity.title)} · {identity.plan}</small></div></div><button className="nav-item" onClick={signOut}><LogIn /><span>Switch Demo Role</span></button></aside>{menuOpen && <button className="scrim" aria-label="Close navigation" onClick={() => setMenuOpen(false)} />}<div className="app-main"><header className="topbar"><button className="icon-button mobile-menu" onClick={() => setMenuOpen(true)} aria-label="Open navigation"><Menu /></button><div className="topbar__context"><span className="eyebrow">{identity.plan} Plan</span><strong>{identity.organization}</strong></div><div className="corpus-status"><span className="live-dot" /> {corpusCheckedAt ? `Official corpus checked ${formatTimestamp(corpusCheckedAt)}` : 'Official corpus status loading'}</div><span className="role-chip">{titleCase(identity.title)}</span></header><main id="main" tabIndex={-1}>{children}</main></div></div>
 }
 
 function BusinessOverview({ identity, navigate, reviewResolved }: { identity: DemoIdentity; navigate: (view: View) => void; reviewResolved: boolean }) {
@@ -167,3 +187,5 @@ function SourceDrawer({ source, close }: { source: SourceDocument; close: () => 
 function Page({ eyebrow, title, description, children }: { eyebrow: string; title: string; description: string; children: React.ReactNode }) { return <div className="page"><div className="page-heading"><div><span className="eyebrow">{eyebrow}</span><h1>{title}</h1><p>{description}</p></div></div>{children}</div> }
 function Metric({ label, value, note }: { label: string; value: string; note: string }) { return <div className="metric"><span>{label}</span><strong>{value}</strong><small>{note}</small></div> }
 function formatDate(value: string) { return new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }).format(new Date(`${value}T00:00:00Z`)) }
+function formatTimestamp(value: string) { return new Intl.DateTimeFormat('en-GB', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'UTC' }).format(new Date(value)) + ' UTC' }
+function titleCase(value: string) { return value.replace(/\b\w/g, letter => letter.toUpperCase()) }

@@ -5,14 +5,14 @@ import type { AgentFinding, AgentState, FindingRisk, MonitorSource } from './typ
 
 const riskRank: Record<FindingRisk, number> = { low: 1, medium: 2, high: 3, critical: 4 }
 
-export function AgentOperations({ announce, record }: { announce: (message: string) => void; record: (title: string, detail: string) => void }) {
+export function AgentOperations({ announce, record, onStateChange }: { announce: (message: string) => void; record: (title: string, detail: string) => void; onStateChange?: (state: AgentState) => void }) {
   const [state, setState] = useState<AgentState | null>(null)
   const [running, setRunning] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [showSourceForm, setShowSourceForm] = useState(false)
 
-  useEffect(() => { loadAgentState().then(setState) }, [])
+  useEffect(() => { loadAgentState().then(next => { setState(next); publishAgentState(next, onStateChange) }) }, [onStateChange])
   const reviewCount = state?.findings.filter(item => item.stage === 'curator-review' || item.stage === 'policy-review').length ?? 0
   const nextRun = useMemo(() => state ? 'Daily at 05:00 UTC' : 'Loading…', [state])
 
@@ -25,6 +25,7 @@ export function AgentOperations({ announce, record }: { announce: (message: stri
     try {
       const next = await runAgent(current, controlledDemo)
       setState(next)
+      publishAgentState(next, onStateChange)
       record('Wayfinder Watch run completed', next.runs[0]?.note ?? 'Monitoring run completed.')
       announce(`Agent run completed with ${next.runs[0]?.changesDetected ?? 0} changes detected`)
     } catch (cause) {
@@ -39,7 +40,7 @@ export function AgentOperations({ announce, record }: { announce: (message: stri
     setSaving(true); setError('')
     try {
       const saved = await saveAgentConfig(current, nextState.config, nextState.sources)
-      setState(saved); record('Agent configuration updated', 'Schedule, review threshold, or monitored-source configuration changed.'); announce('Agent configuration saved')
+      setState(saved); publishAgentState(saved, onStateChange); record('Agent configuration updated', 'Schedule, review threshold, or monitored-source configuration changed.'); announce('Agent configuration saved')
     } catch { setError('Configuration could not be saved. Existing settings were preserved.') }
     finally { setSaving(false) }
   }
@@ -47,7 +48,7 @@ export function AgentOperations({ announce, record }: { announce: (message: stri
   async function routeFinding(id: string) {
     if (!state) return
     const next = await updateFindingStage(state, id, 'policy-review')
-    setState(next); record('Agent finding routed', 'A high-impact finding was sent to policy review.'); announce('Finding routed to policy review')
+    setState(next); publishAgentState(next, onStateChange); record('Agent finding routed', 'A high-impact finding was sent to policy review.'); announce('Finding routed to policy review')
   }
 
   function addSource(source: MonitorSource) {
@@ -58,7 +59,7 @@ export function AgentOperations({ announce, record }: { announce: (message: stri
 
   return <div className="agent-operations">
     <section className="agent-hero">
-      <div><span className="eyebrow">Operational monitoring agent</span><div className="agent-title"><Bot aria-hidden="true" /><h2>{state.config.name}</h2></div><p>Scans configured official sources, fingerprints changes, extracts candidate regulatory facts, and routes ambiguity or high-impact interpretations to people.</p><div className="agent-mode"><span className={`agent-health agent-health--${state.health}`}><Activity /> {state.health}</span><span>{state.mode === 'cloud' ? 'Connected cloud runtime' : 'Controlled demo fallback'}</span></div></div>
+      <div><span className="eyebrow">Operational Monitoring Agent</span><div className="agent-title"><Bot aria-hidden="true" /><h2>{state.config.name}</h2></div><p>Scans configured official sources, fingerprints changes, extracts candidate regulatory facts, and routes ambiguity or high-impact interpretations to people.</p><div className="agent-mode"><span className={`agent-health agent-health--${state.health}`}><Activity /> {state.health}</span><span>{state.mode === 'cloud' ? 'Connected cloud runtime' : 'Controlled demo fallback'}</span><span>State updated {formatTimestamp(state.lastUpdated)}</span></div></div>
       <div className="agent-controls"><button className="button button--primary" onClick={() => void execute(false)} disabled={running || !state.config.enabled}>{running ? <><RefreshCcw className="spin" /> Scanning sources…</> : <><Play /> Run live scan now</>}</button><button className="button button--secondary" onClick={() => void execute(true)} disabled={running}>Run controlled change demo</button><small>The demo fixture is always labeled and never represented as a real regulator publication.</small></div>
     </section>
 
@@ -99,7 +100,7 @@ export function AgentOperations({ announce, record }: { announce: (message: stri
 }
 
 function RunSummary({ run }: { run: AgentState['runs'][number] }) {
-  return <div className="run-summary"><div className="run-status"><span className={`agent-health agent-health--${run.status === 'completed' ? 'active' : 'degraded'}`}><Activity /> {run.status}</span><span>{formatTimestamp(run.startedAt)}</span></div><dl><div><dt>Sources checked</dt><dd>{run.sourcesChecked}</dd></div><div><dt>Changes</dt><dd>{run.changesDetected}</dd></div><div><dt>Findings</dt><dd>{run.findingsCreated}</dd></div><div><dt>Failures</dt><dd>{run.failures}</dd></div></dl><div className="run-note"><strong>Extraction mode</strong><span>{run.extractionMode}</span><p>{run.note}</p></div></div>
+  return <div className="run-summary"><div className="run-status"><span className={`agent-health agent-health--${run.status === 'completed' ? 'active' : 'degraded'}`}><Activity /> {run.status}</span><span>Started {formatTimestamp(run.startedAt)}</span></div><dl><div><dt>Sources Checked</dt><dd>{run.sourcesChecked}</dd></div><div><dt>Changes</dt><dd>{run.changesDetected}</dd></div><div><dt>Findings</dt><dd>{run.findingsCreated}</dd></div><div><dt>Failures</dt><dd>{run.failures}</dd></div></dl><div className="run-note"><strong>Completed</strong><span>{run.completedAt ? formatTimestamp(run.completedAt) : 'In progress'}</span><strong>Extraction Mode</strong><span>{run.extractionMode}</span><p>{run.note}</p></div></div>
 }
 
 function FindingCard({ finding, threshold, route }: { finding: AgentFinding; threshold: FindingRisk; route: () => void }) {
@@ -118,3 +119,4 @@ function SourceForm({ cancel, add }: { cancel: () => void; add: (source: Monitor
 
 function Metric({ label, value, note }: { label: string; value: string; note: string }) { return <div className="metric"><span>{label}</span><strong>{value}</strong><small>{note}</small></div> }
 function formatTimestamp(value: string) { return new Intl.DateTimeFormat('en-GB', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'UTC' }).format(new Date(value)) + ' UTC' }
+function publishAgentState(state: AgentState, callback?: (state: AgentState) => void) { callback?.(state); window.dispatchEvent(new CustomEvent<AgentState>('wayfinder:agent-state', { detail: state })) }

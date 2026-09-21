@@ -39,6 +39,6 @@ export function buildActions(profile: BusinessProfile, transaction: Transaction,
 }
 
 export const initialAuditEvents: AuditEvent[] = [
-  { id: 'ev-1', time: '13:10', title: 'Official source corpus checked', detail: 'Four official-source records loaded with provenance and version metadata.', kind: 'evidence' },
-  { id: 'ev-2', time: '13:14', title: 'Supersession relationship detected', detail: 'The 2026 service-export notice was linked to the older 2024 FAQ position.', kind: 'system' },
+  { id: 'ev-1', time: '20 Sep 2026, 13:10 UTC', title: 'Official source corpus checked', detail: 'Four official-source records loaded with provenance and version metadata.', kind: 'evidence' },
+  { id: 'ev-2', time: '20 Sep 2026, 13:14 UTC', title: 'Supersession relationship detected', detail: 'The 2026 service-export notice was linked to the older 2024 FAQ position.', kind: 'system' },
 ]

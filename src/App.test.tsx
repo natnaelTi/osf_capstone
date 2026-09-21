@@ -14,6 +14,17 @@ describe('Wayfinder judge-ready flow', () => {
     expect(screen.getByRole('heading', { name: /recent changes and unresolved questions/i })).toBeInTheDocument()
   })
 
+  it('publishes the pitch deck and role-based user guide', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await user.click(screen.getByRole('button', { name: /^pitch deck$/i }))
+    expect(screen.getByRole('heading', { name: /wayfinder pitch deck/i })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /download pdf/i })).toHaveAttribute('href', '/wayfinder-pitch-deck.pdf')
+    await user.click(screen.getAllByRole('button', { name: /^user guide$/i })[0])
+    expect(screen.getByRole('heading', { name: /role-based user guide/i })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /platform administrator/i })).toBeInTheDocument()
+  })
+
   it('moves a business owner from demo login to a verified current rule', async () => {
     const user = userEvent.setup()
     render(<App />)
