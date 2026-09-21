@@ -14,7 +14,7 @@ export function AgentOperations({ announce, record }: { announce: (message: stri
 
   useEffect(() => { loadAgentState().then(setState) }, [])
   const reviewCount = state?.findings.filter(item => item.stage === 'curator-review' || item.stage === 'policy-review').length ?? 0
-  const nextRun = useMemo(() => state ? 'Within the next 6-hour UTC window' : 'Loading…', [state])
+  const nextRun = useMemo(() => state ? 'Daily at 05:00 UTC' : 'Loading…', [state])
 
   if (!state) return <section className="workspace-card agent-loading" aria-live="polite"><RefreshCcw className="spin" /><div><strong>Loading Wayfinder Watch</strong><p>Retrieving agent configuration, monitored sources, and recent runs.</p></div></section>
 
@@ -64,14 +64,14 @@ export function AgentOperations({ announce, record }: { announce: (message: stri
 
     {error && <div className="notice notice--warning" role="alert"><AlertTriangle /><div><strong>Agent action needs attention</strong><p>{error}</p></div></div>}
 
-    <div className="metric-row agent-metrics"><Metric label="Monitored sources" value={String(state.sources.filter(item => item.active).length)} note={`${state.sources.length} configured`} /><Metric label="Awaiting people" value={String(reviewCount)} note="Curator or policy review" /><Metric label="Next scheduled run" value="≤ 6h" note={nextRun} /></div>
+    <div className="metric-row agent-metrics"><Metric label="Monitored sources" value={String(state.sources.filter(item => item.active).length)} note={`${state.sources.length} configured`} /><Metric label="Awaiting people" value={String(reviewCount)} note="Curator or policy review" /><Metric label="Next scheduled run" value="Daily" note={nextRun} /></div>
 
     <div className="agent-grid">
       <section className="workspace-card agent-panel">
         <div className="panel-heading"><div><span className="eyebrow">Agent configuration</span><h2>Schedule and decision boundaries</h2></div><button className="button button--secondary" onClick={() => void persist(state)} disabled={saving}>{saving ? <RefreshCcw className="spin" /> : <Save />} Save</button></div>
         <div className="form-grid agent-config-grid">
           <label className="field"><span>Agent state</span><select value={state.config.enabled ? 'active' : 'paused'} onChange={event => setState({ ...state, config: { ...state.config, enabled: event.target.value === 'active' }, health: event.target.value === 'active' ? 'active' : 'paused' })}><option value="active">Active</option><option value="paused">Paused</option></select></label>
-          <label className="field"><span>Scan schedule</span><select value={state.config.schedule} onChange={event => setState({ ...state, config: { ...state.config, schedule: event.target.value } })}><option value="0 */6 * * *">Every 6 hours</option><option value="0 */12 * * *">Every 12 hours</option><option value="0 5 * * *">Daily at 05:00 UTC</option></select></label>
+          <label className="field"><span>Automatic scan schedule</span><select value={state.config.schedule} onChange={event => setState({ ...state, config: { ...state.config, schedule: event.target.value } })}><option value="0 5 * * *">Daily at 05:00 UTC</option></select><small>Compatible with Vercel Hobby. Administrators can run additional scans manually.</small></label>
           <label className="field"><span>Change sensitivity</span><select value={state.config.changeSensitivity} onChange={event => setState({ ...state, config: { ...state.config, changeSensitivity: event.target.value as AgentState['config']['changeSensitivity'] } })}><option value="document-list">New or removed documents</option><option value="meaningful-text">Meaningful text changes</option><option value="any-text">Any text change</option></select></label>
           <label className="field"><span>Mandatory review threshold</span><select value={state.config.reviewThreshold} onChange={event => setState({ ...state, config: { ...state.config, reviewThreshold: event.target.value as FindingRisk } })}><option value="medium">Medium and above</option><option value="high">High and critical</option><option value="critical">Critical only</option></select></label>
           <label className="field"><span>Assigned reviewer</span><input value={state.config.assignedReviewer} onChange={event => setState({ ...state, config: { ...state.config, assignedReviewer: event.target.value } })} /></label>

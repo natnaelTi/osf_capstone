@@ -47,7 +47,7 @@
 
 1. Monitoring-agent health, current mode, and last/next run.
 2. Manual live scan and clearly labeled controlled-change demonstration.
-3. Schedule, change sensitivity, review threshold, reviewer, and publication boundary.
+3. Hobby-compatible daily schedule, manual scanning, change sensitivity, review threshold, reviewer, and publication boundary.
 4. Source registry with authority, jurisdiction, domain, language, URL, fingerprint health, and active state.
 5. Findings split into observed evidence, AI interpretation, recommended action, and professional judgment.
 6. Organizations and plan distribution.
