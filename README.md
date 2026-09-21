@@ -52,8 +52,10 @@ On Windows, replace `python3` with `py -3` when necessary.
 - Personalized action, deadline, document, and escalation outputs
 - Selective professional review and audit history
 - Manual, document-upload, and monitored-page ingestion demonstrations
+- Operational Wayfinder Watch agent with configurable official sources, scheduled/manual scans, structured extraction, and human-review routing
 
 See `AI_BUILD_LOG.md` for the human/AI division of responsibility.
+See `docs/AGENT-DEPLOYMENT.md` for the Supabase, Vercel Cron, and AI runtime setup.
 
 ## Project guidance
 
